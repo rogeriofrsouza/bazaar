@@ -1,0 +1,19 @@
+name: bazaar
+
+services:
+  catalog-service:
+    container_name: catalog-service
+    image: bazaar/catalog-service
+    build:
+      context: ..
+      target: development
+      dockerfile: catalog-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://catalog-service-db:5432/catalog
+      SPRING_DATASOURCE_USERNAME: catalog
+      SPRING_DATASOURCE_PASSWORD: catalog
+    depends_on:
+      catalog-service-db:
+        condition: service_healthy
