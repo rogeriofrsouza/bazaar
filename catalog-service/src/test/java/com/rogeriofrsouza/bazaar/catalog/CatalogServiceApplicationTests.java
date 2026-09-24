@@ -1,10 +1,10 @@
-package com.rogeriofrsouza.bazaar;
+package com.rogeriofrsouza.bazaar.catalog;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class BazaarApplicationTests {
+class CatalogServiceApplicationTests {
 
     @Test
     void contextLoads() {

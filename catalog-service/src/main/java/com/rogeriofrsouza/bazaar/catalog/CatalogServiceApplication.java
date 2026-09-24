@@ -1,13 +1,13 @@
-package com.rogeriofrsouza.bazaar;
+package com.rogeriofrsouza.bazaar.catalog;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class BazaarApplication {
+public class CatalogServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BazaarApplication.class, args);
+        SpringApplication.run(CatalogServiceApplication.class, args);
     }
 
 }
