@@ -4,3 +4,10 @@ server:
 spring:
   application:
     name: catalog-service
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
