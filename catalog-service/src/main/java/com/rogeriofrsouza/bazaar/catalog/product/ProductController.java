@@ -1,21 +1,29 @@
 package com.rogeriofrsouza.bazaar.catalog.product;
 
+import java.net.URI;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import jakarta.validation.Valid;
 
 @RequestMapping("/api/products")
 @RestController
 class ProductController {
 
     private final ProductRepository productRepository;
+    private final ProductService productService;
 
-    ProductController(ProductRepository productRepository) {
+    ProductController(ProductRepository productRepository, ProductService productService) {
         this.productRepository = productRepository;
+        this.productService = productService;
     }
 
     @GetMapping
@@ -33,5 +41,17 @@ class ProductController {
         return productRepository.findByCodeAndStatus(code, ProductStatus.ACTIVE)
             .map(ProductResponse::from)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product " + code.value() + " not found"));
+    }
+
+    @PostMapping
+    ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
+        ProductResponse product = productService.create(request);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+            .path("/{code}")
+            .buildAndExpand(product.code())
+            .toUri();
+
+        return ResponseEntity.created(location).body(product);
     }
 }

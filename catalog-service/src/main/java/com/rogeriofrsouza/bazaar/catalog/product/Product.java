@@ -63,6 +63,38 @@ public class Product {
     protected Product() {
     }
 
+    private Product(
+        ProductCode code,
+        String name,
+        String description,
+        BigDecimal price,
+        Currency currency,
+        String imageUrl,
+        ProductStatus status,
+        Category category
+    ) {
+        this.code = code;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.currency = currency;
+        this.imageUrl = imageUrl;
+        this.status = status;
+        this.category = category;
+    }
+
+     public static Product create(
+         ProductCode code,
+         String name,
+         String description,
+         BigDecimal price,
+         Currency currency,
+         String imageUrl,
+         Category category
+     ) {
+        return new Product(code, name, description, price, currency, imageUrl, ProductStatus.ACTIVE, category);
+    }
+
     public Long getId() {
         return id;
     }
