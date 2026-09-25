@@ -2,6 +2,8 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,22 @@ public class ProductService {
     ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> findActive(String category, Pageable pageable) {
+        Page<Product> products = category == null
+            ? productRepository.findByStatus(ProductStatus.ACTIVE, pageable)
+            : productRepository.findByStatusAndCategorySlug(ProductStatus.ACTIVE, category, pageable);
+
+        return products.map(ProductResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse findActiveByCode(ProductCode code) {
+        return productRepository.findByCodeAndStatus(code, ProductStatus.ACTIVE)
+            .map(ProductResponse::from)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product " + code.value() + " not found"));
     }
 
     @Transactional
