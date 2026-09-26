@@ -3,11 +3,7 @@ name: bazaar
 services:
   catalog-service:
     container_name: catalog-service
-    image: bazaar/catalog-service
-    build:
-      context: ..
-      target: development
-      dockerfile: catalog-service/Dockerfile
+    image: rogeriofrsouza/bazaar-catalog-service
     ports:
       - "8081:8081"
     environment:
