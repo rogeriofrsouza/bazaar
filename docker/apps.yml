@@ -11,9 +11,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://catalog-service-db:5432/catalog
-      SPRING_DATASOURCE_USERNAME: catalog
-      SPRING_DATASOURCE_PASSWORD: catalog
+      DB_HOST: catalog-service-db
     depends_on:
       catalog-service-db:
         condition: service_healthy
