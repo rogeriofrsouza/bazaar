@@ -24,4 +24,23 @@
         <module>catalog-service</module>
     </modules>
 
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <image>
+                            <name>rogeriofrsouza/bazaar-${project.artifactId}:${project.version}</name>
+                            <tags>
+                                <tag>rogeriofrsouza/bazaar-${project.artifactId}:latest</tag>
+                            </tags>
+                        </image>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
 </project>
