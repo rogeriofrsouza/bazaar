@@ -7,7 +7,9 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DB_HOST: catalog-service-db
+      SPRING_DATASOURCE_URL: ${CATALOG_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
     depends_on:
       catalog-service-db:
         condition: service_healthy
