@@ -4,9 +4,10 @@ server:
 spring:
   application:
     name: catalog-service
-  docker:
-    compose:
-      enabled: false
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}
+    username: ${DB_USERNAME:catalog}
+    password: ${DB_PASSWORD:catalog}
   jpa:
     open-in-view: false
     hibernate:

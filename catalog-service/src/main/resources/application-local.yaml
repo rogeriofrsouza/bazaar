@@ -1,6 +1,0 @@
-spring:
-  docker:
-    compose:
-      enabled: true
-      file: ../docker/infra.yml
-      lifecycle-management: start-only
