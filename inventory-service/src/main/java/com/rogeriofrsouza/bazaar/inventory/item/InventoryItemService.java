@@ -5,6 +5,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collection;
+import java.util.List;
+
 @Service
 public class InventoryItemService {
 
@@ -19,6 +22,14 @@ public class InventoryItemService {
         return inventoryItemRepository.findByProductCode(code)
                 .map(InventoryItemResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventory item " + code + " not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryItemResponse> findByProductCodes(Collection<String> codes) {
+        return inventoryItemRepository.findByProductCodeInOrderByProductCode(codes)
+                .stream()
+                .map(InventoryItemResponse::from)
+                .toList();
     }
 
     @Transactional

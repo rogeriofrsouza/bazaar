@@ -1,11 +1,13 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RequestMapping("/api/inventory")
 @RestController
@@ -20,6 +22,11 @@ class InventoryItemController {
     @GetMapping("/{code}")
     InventoryItemResponse get(@PathVariable String code) {
         return inventoryItemService.findByProductCode(code);
+    }
+
+    @GetMapping(params = "codes")
+    List<InventoryItemResponse> getAll(@RequestParam @Size(min = 1, max = 10) List<String> codes) {
+        return inventoryItemService.findByProductCodes(codes);
     }
 
     @PostMapping
