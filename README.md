@@ -12,9 +12,10 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 
 ## Services
 
-| Service           | Port | Database                            | Description                        |
-|-------------------|------|-------------------------------------|------------------------------------|
-| `catalog-service` | 8081 | `catalog-service-db` (host port 5432) | Products and categories |
+| Service             | Port | Database                                | Description                     |
+|---------------------|------|-----------------------------------------|---------------------------------|
+| `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories         |
+| `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations   |
 
 ## Project structure
 
@@ -22,6 +23,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 bazaar/
 ├── pom.xml              # Parent POM (modules, shared OCI image config)
 ├── catalog-service/     # Catalog microservice
+├── inventory-service/   # Inventory microservice
 └── docker/
     ├── .env             # Variables used by the compose files
     ├── infra.yml        # Infrastructure (databases, brokers, ...)
@@ -67,7 +69,7 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl catalog-service spring-boot:build-image -DskipTests
+   ./mvnw -pl catalog-service,inventory-service spring-boot:build-image -DskipTests
    ```
    Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
 2. Start infrastructure and apps:
@@ -93,13 +95,13 @@ docker compose -f docker/infra.yml -f docker/apps.yml down -v   # also remove vo
 
 ## Configuration
 
-Services read their connection settings from environment variables, falling back to the local defaults:
+Services read their connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`:
 
-| Variable      | Default (local)                              |
-|---------------|----------------------------------------------|
-| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog`   |
-| `DB_USERNAME` | `catalog`                                    |
-| `DB_PASSWORD` | `catalog`                                    |
+| Variable      | `catalog-service` default                  | `inventory-service` default                  |
+|---------------|--------------------------------------------|----------------------------------------------|
+| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` |
+| `DB_USERNAME` | `catalog`                                  | `inventory`                                  |
+| `DB_PASSWORD` | `catalog`                                  | `inventory`                                  |
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 

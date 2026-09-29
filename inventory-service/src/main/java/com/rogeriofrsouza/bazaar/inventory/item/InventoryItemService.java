@@ -1,0 +1,68 @@
+package com.rogeriofrsouza.bazaar.inventory.item;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class InventoryItemService {
+
+    private final InventoryItemRepository inventoryItemRepository;
+
+    InventoryItemService(InventoryItemRepository inventoryItemRepository) {
+        this.inventoryItemRepository = inventoryItemRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryItemResponse findByProductCode(String code) {
+        return inventoryItemRepository.findByProductCode(code)
+                .map(InventoryItemResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventory item " + code + " not found"));
+    }
+
+    @Transactional
+    public InventoryItemResponse create(CreateInventoryItemRequest request) {
+        String code = request.productCode();
+        if (inventoryItemRepository.existsByProductCode(code)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Inventory item " + code + " already exists");
+        }
+
+        InventoryItem item = InventoryItem.create(code, request.quantityOnHand());
+        return InventoryItemResponse.from(inventoryItemRepository.save(item));
+    }
+
+    @Transactional
+    public InventoryItemResponse restock(String code, int quantity) {
+        InventoryItem item = findForUpdate(code);
+        item.restock(quantity);
+        return InventoryItemResponse.from(item);
+    }
+
+    @Transactional
+    public InventoryItemResponse reserve(String code, int quantity) {
+        InventoryItem item = findForUpdate(code);
+        if (quantity > item.getAvailable()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Only " + item.getAvailable() + " units of " + code + " available");
+        }
+        item.reserve(quantity);
+        return InventoryItemResponse.from(item);
+    }
+
+    @Transactional
+    public InventoryItemResponse release(String code, int quantity) {
+        InventoryItem item = findForUpdate(code);
+        if (quantity > item.getQuantityReserved()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Only " + item.getQuantityReserved() + " units of " + code + " reserved");
+        }
+        item.release(quantity);
+        return InventoryItemResponse.from(item);
+    }
+
+    private InventoryItem findForUpdate(String code) {
+        return inventoryItemRepository.findWithLockByProductCode(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventory item " + code + " not found"));
+    }
+}
