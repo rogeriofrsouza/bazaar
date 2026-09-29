@@ -54,7 +54,8 @@ public class InventoryItem {
     public void reserve(int quantity) {
         requirePositive(quantity);
         if (quantity > getAvailable()) {
-            throw new IllegalStateException("Not enough stock available for " + productCode);
+            throw new InsufficientStockException(
+                    "Only " + getAvailable() + " units of " + productCode + " available");
         }
         quantityReserved += quantity;
     }
@@ -62,7 +63,8 @@ public class InventoryItem {
     public void release(int quantity) {
         requirePositive(quantity);
         if (quantity > quantityReserved) {
-            throw new IllegalStateException("Not enough stock reserved for " + productCode);
+            throw new InsufficientStockException(
+                    "Only " + quantityReserved + " units of " + productCode + " reserved");
         }
         quantityReserved -= quantity;
     }

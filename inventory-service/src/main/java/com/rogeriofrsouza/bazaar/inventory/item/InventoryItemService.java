@@ -42,10 +42,6 @@ public class InventoryItemService {
     @Transactional
     public InventoryItemResponse reserve(String code, int quantity) {
         InventoryItem item = findForUpdate(code);
-        if (quantity > item.getAvailable()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Only " + item.getAvailable() + " units of " + code + " available");
-        }
         item.reserve(quantity);
         return InventoryItemResponse.from(item);
     }
@@ -53,10 +49,6 @@ public class InventoryItemService {
     @Transactional
     public InventoryItemResponse release(String code, int quantity) {
         InventoryItem item = findForUpdate(code);
-        if (quantity > item.getQuantityReserved()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Only " + item.getQuantityReserved() + " units of " + code + " reserved");
-        }
         item.release(quantity);
         return InventoryItemResponse.from(item);
     }
