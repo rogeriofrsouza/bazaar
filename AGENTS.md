@@ -35,7 +35,8 @@ docker/apps.yml      # Microservice containers
 
 ## Configuration and Docker
 
-- `application.yaml` reads connection settings from env vars with **localhost defaults**, e.g. `url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}`. Running from the IDE needs no profile. Containers and deployed environments override the env vars.
+- Service settings live in `config-repo/`: `application.yaml` for shared settings, `<service>.yaml` for one service. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
+- Config files read connection settings from env vars with **localhost defaults**, e.g. `url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}`. The client resolves the placeholders. Running from the IDE needs no profile. Containers and deployed environments override the env vars.
 - There is no `spring-boot-docker-compose` and no `local` profile. Don't reintroduce them.
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
 - Both compose files use project name `bazaar`. Full stack: `docker compose -f docker/infra.yml -f docker/apps.yml up -d`.
@@ -49,13 +50,14 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
+- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and imports `file:../config-repo/application.yaml` and `file:../config-repo/<service>.yaml`, so tests need no config server.
 - `config-server` has no containers, so it only has a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice
 
-1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited.
-2. Pick the next free app port (`catalog-service` uses 8081) and set `server.port` and `spring.application.name`.
-3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the service's localhost default.
-4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env`, and `depends_on` its database with `condition: service_healthy`.
-5. Add `ContainersConfig`, `Test<Name>ServiceApplication` and a context-load test as described above.
+1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited. Add `spring-cloud-starter-config`.
+2. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `config-repo/<name>-service.yaml`; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
+3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in `config-repo/<name>-service.yaml`.
+4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` and `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
+5. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` and a context-load test as described above.
 6. Update the services table in `README.md`.

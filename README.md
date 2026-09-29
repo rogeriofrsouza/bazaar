@@ -49,15 +49,16 @@ Use this to run several services together from the IDE.
    ```sh
    docker compose -f docker/infra.yml up -d
    ```
-2. Run each service's main class from the IDE (e.g. `CatalogServiceApplication`).
+2. Run `ConfigServerApplication` from the IDE.
+3. Run each service's main class from the IDE (e.g. `CatalogServiceApplication`).
 
-Each service's `application.yaml` defaults to the `localhost` ports published by `infra.yml`, so no extra configuration is needed.
+Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed.
 
 ### Option 2: A single service with Testcontainers
 
 Use this to work on one service in isolation without starting anything by hand.
 
-Run the service's test main class from the IDE (e.g. `TestCatalogServiceApplication` in `catalog-service/src/test/java`). It starts the service's own dependencies with Testcontainers (see `ContainersConfig`) and wires the connection details automatically. Docker must be running.
+Run the service's test main class from the IDE (e.g. `TestCatalogServiceApplication` in `catalog-service/src/test/java`). It starts the service's own dependencies with Testcontainers (see `ContainersConfig`) and wires the connection details automatically. Docker must be running. No config server is needed: the test classpath disables the config client and imports the service's files from `config-repo/` directly (see `src/test/resources/config/application.yaml`).
 
 Or from the terminal:
 ```sh
@@ -98,13 +99,17 @@ docker compose -f docker/infra.yml -f docker/apps.yml down -v   # also remove vo
 
 ## Configuration
 
-Services read their connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`:
+Service settings live in `config-repo/` and are served by `config-server` (see below). Each service's own `application.yaml` only holds its name and how to reach the config server.
+
+The files in `config-repo/<service>.yaml` read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
 
 | Variable      | `catalog-service` default                  | `inventory-service` default                  |
 |---------------|--------------------------------------------|----------------------------------------------|
 | `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` |
 | `DB_USERNAME` | `catalog`                                  | `inventory`                                  |
 | `DB_PASSWORD` | `catalog`                                  | `inventory`                                  |
+
+`CONFIG_SERVER_URL` (default `http://localhost:8888`) points each service at the config server. Services fail fast if the config server can't be reached; in Docker, `restart: on-failure` restarts them until it is up.
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 

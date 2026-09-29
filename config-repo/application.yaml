@@ -1,4 +1,8 @@
-# Served by config-server (native backend).
-# Properties in this file are shared by every config client.
-# Per-service overrides go in <spring.application.name>.yaml, e.g. catalog-service.yaml,
-# and per-profile ones in <spring.application.name>-<profile>.yaml.
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true

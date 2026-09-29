@@ -1,17 +1,8 @@
-server:
-  port: 8081
-
 spring:
   application:
     name: catalog-service
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}
-    username: ${DB_USERNAME:catalog}
-    password: ${DB_PASSWORD:catalog}
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-  mvc:
-    problemdetails:
-      enabled: true
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  cloud:
+    config:
+      fail-fast: true
