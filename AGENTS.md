@@ -7,7 +7,9 @@ Instructions for AI coding agents working in this repository. See `README.md` fo
 Bazaar is an e-commerce platform built as Spring Boot microservices (Java 25, Spring Boot 4.1, Maven multi-module). Each service owns its PostgreSQL database. Infrastructure and apps run with Docker Compose. Images are built with Cloud Native Buildpacks.
 
 ```
-pom.xml              # Parent POM: modules + shared spring-boot-maven-plugin image config
+pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
+config-server/       # Spring Cloud Config server (native backend, no database)
+config-repo/         # Config files served by config-server (application.yaml, <app-name>.yaml)
 catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
 docker/infra.yml     # Databases, brokers, etc.
@@ -47,6 +49,7 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
+- `config-server` has no containers, so it only has a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice
 

@@ -12,16 +12,19 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 
 ## Services
 
-| Service             | Port | Database                                | Description                     |
-|---------------------|------|-----------------------------------------|---------------------------------|
-| `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories         |
-| `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations   |
+| Service             | Port | Database                                | Description                                      |
+|---------------------|------|-----------------------------------------|--------------------------------------------------|
+| `config-server`     | 8888 | —                                       | Centralized configuration (Spring Cloud Config)  |
+| `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                          |
+| `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                    |
 
 ## Project structure
 
 ```
 bazaar/
-├── pom.xml              # Parent POM (modules, shared OCI image config)
+├── pom.xml              # Parent POM (modules, Spring Cloud BOM, shared OCI image config)
+├── config-server/       # Spring Cloud Config server
+├── config-repo/         # Configuration files served by config-server
 ├── catalog-service/     # Catalog microservice
 ├── inventory-service/   # Inventory microservice
 └── docker/
@@ -69,7 +72,7 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl catalog-service,inventory-service spring-boot:build-image -DskipTests
+   ./mvnw -pl config-server,catalog-service,inventory-service spring-boot:build-image -DskipTests
    ```
    Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
 2. Start infrastructure and apps:
@@ -104,6 +107,10 @@ Services read their connection settings from environment variables, falling back
 | `DB_PASSWORD` | `catalog`                                  | `inventory`                                  |
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
+
+### Config server
+
+`config-server` runs Spring Cloud Config with the `native` backend and serves the files in `config-repo/`: `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The location comes from `CONFIG_SEARCH_LOCATIONS`, which defaults to `file:../config-repo/` (relative to the `config-server` module, the working directory when run from the IDE or with `./mvnw -pl config-server spring-boot:run`). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo/`.
 
 ## Tests
 
