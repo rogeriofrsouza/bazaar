@@ -1,5 +1,7 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,12 @@ public class InventoryItemService {
                 .stream()
                 .map(InventoryItemResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InventoryItemResponse> findAll(Pageable pageable) {
+        return inventoryItemRepository.findAll(pageable)
+                .map(InventoryItemResponse::from);
     }
 
     @Transactional

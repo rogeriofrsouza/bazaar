@@ -2,6 +2,10 @@ package com.rogeriofrsouza.bazaar.inventory.item;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -27,6 +31,12 @@ class InventoryItemController {
     @GetMapping(params = "codes")
     List<InventoryItemResponse> getAll(@RequestParam @Size(min = 1, max = 20) List<String> codes) {
         return inventoryItemService.findByProductCodes(codes);
+    }
+
+    @GetMapping
+    PagedModel<InventoryItemResponse> list(@PageableDefault(size = 20, sort = "productCode") Pageable pageable) {
+        Page<InventoryItemResponse> page = inventoryItemService.findAll(pageable);
+        return new PagedModel<>(page);
     }
 
     @PostMapping
