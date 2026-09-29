@@ -61,6 +61,13 @@ public class InventoryItemService {
         return InventoryItemResponse.from(item);
     }
 
+    @Transactional
+    public InventoryItemResponse fulfil(String code, int quantity) {
+        InventoryItem item = findForUpdate(code);
+        item.fulfil(quantity);
+        return InventoryItemResponse.from(item);
+    }
+
     private InventoryItem findForUpdate(String code) {
         return inventoryItemRepository.findWithLockByProductCode(code)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inventory item " + code + " not found"));

@@ -51,4 +51,10 @@ class InventoryItemController {
                                   @Valid @RequestBody QuantityRequest request) {
         return inventoryItemService.release(code, request.quantity());
     }
+
+    @PostMapping("/{code}/fulfil")
+    InventoryItemResponse fulfil(@PathVariable String code,
+                                 @Valid @RequestBody QuantityRequest request) {
+        return inventoryItemService.fulfil(code, request.quantity());
+    }
 }

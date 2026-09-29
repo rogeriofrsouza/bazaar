@@ -67,6 +67,16 @@ public class InventoryItem {
         quantityReserved -= quantity;
     }
 
+    public void fulfil(int quantity) {
+        requirePositive(quantity);
+        if (quantity > quantityReserved) {
+            throw new InsufficientStockException(
+                    "Only " + quantityReserved + " units of " + productCode + " reserved");
+        }
+        quantityReserved -= quantity;
+        quantityOnHand -= quantity;
+    }
+
     private static void requirePositive(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
