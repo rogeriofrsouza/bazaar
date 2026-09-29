@@ -18,5 +18,23 @@ services:
       timeout: 5s
       retries: 5
 
+  inventory-service-db:
+    container_name: inventory-service-db
+    image: postgres:18-alpine
+    ports:
+      - "${INVENTORY_DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${INVENTORY_DB_USERNAME}
+      POSTGRES_PASSWORD: ${INVENTORY_DB_PASSWORD}
+      POSTGRES_DB: inventory
+    volumes:
+      - inventory-service-db-data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   catalog-service-db-data:
+  inventory-service-db-data:
