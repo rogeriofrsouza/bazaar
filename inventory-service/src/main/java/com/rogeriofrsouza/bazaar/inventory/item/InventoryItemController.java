@@ -25,7 +25,7 @@ class InventoryItemController {
     }
 
     @GetMapping(params = "codes")
-    List<InventoryItemResponse> getAll(@RequestParam @Size(min = 1, max = 10) List<String> codes) {
+    List<InventoryItemResponse> getAll(@RequestParam @Size(min = 1, max = 20) List<String> codes) {
         return inventoryItemService.findByProductCodes(codes);
     }
 
