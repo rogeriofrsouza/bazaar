@@ -2,13 +2,15 @@ package com.rogeriofrsouza.bazaar.inventory.item;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
-import java.util.List;
+
+import static com.rogeriofrsouza.bazaar.inventory.item.InventoryItemSpecifications.productCodeIn;
 
 @Service
 public class InventoryItemService {
@@ -27,16 +29,10 @@ public class InventoryItemService {
     }
 
     @Transactional(readOnly = true)
-    public List<InventoryItemResponse> findByProductCodes(Collection<String> codes) {
-        return inventoryItemRepository.findByProductCodeInOrderByProductCode(codes)
-                .stream()
-                .map(InventoryItemResponse::from)
-                .toList();
-    }
+    public Page<InventoryItemResponse> findAll(Collection<String> codes, Pageable pageable) {
+        Specification<InventoryItem> specification = productCodeIn(codes);
 
-    @Transactional(readOnly = true)
-    public Page<InventoryItemResponse> findAll(Pageable pageable) {
-        return inventoryItemRepository.findAll(pageable)
+        return inventoryItemRepository.findAll(specification, pageable)
                 .map(InventoryItemResponse::from);
     }
 

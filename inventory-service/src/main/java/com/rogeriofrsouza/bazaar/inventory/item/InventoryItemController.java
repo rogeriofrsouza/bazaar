@@ -28,14 +28,10 @@ class InventoryItemController {
         return inventoryItemService.findByProductCode(code);
     }
 
-    @GetMapping(params = "codes")
-    List<InventoryItemResponse> getAll(@RequestParam @Size(min = 1, max = 20) List<String> codes) {
-        return inventoryItemService.findByProductCodes(codes);
-    }
-
     @GetMapping
-    PagedModel<InventoryItemResponse> list(@PageableDefault(size = 20, sort = "productCode") Pageable pageable) {
-        Page<InventoryItemResponse> page = inventoryItemService.findAll(pageable);
+    PagedModel<InventoryItemResponse> list(@RequestParam(required = false) @Size(max = 20) List<String> codes,
+                                           @PageableDefault(size = 20, sort = "productCode") Pageable pageable) {
+        Page<InventoryItemResponse> page = inventoryItemService.findAll(codes, pageable);
         return new PagedModel<>(page);
     }
 
