@@ -112,6 +112,8 @@ The `<service>.yaml` files in bazaar-config read connection settings from enviro
 
 `CONFIG_SERVER_URL` (default `http://localhost:8888`) points each service at the config server. Services fail fast if the config server can't be reached; in Docker, `restart: on-failure` restarts them until it is up.
 
+`DISCOVERY_SERVER_URL` (default `http://localhost:8761/eureka/`) points each service at the Eureka server. Services register on startup and keep retrying if it isn't up yet.
+
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
 ### Config server

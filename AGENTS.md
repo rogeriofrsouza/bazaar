@@ -50,14 +50,14 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
-- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and imports `file:../config-repo/application.yaml` and `file:../config-repo/<service>.yaml`, so tests need no config server.
+- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false` and imports `file:../config-repo/application.yaml` and `file:../config-repo/<service>.yaml`, so tests need no config or discovery server.
 - `config-server` and `discovery-server` have no containers, so they only have a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice
 
-1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited. Add `spring-cloud-starter-config`.
+1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited. Add `spring-cloud-starter-config` and `spring-cloud-starter-netflix-eureka-client`.
 2. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `<name>-service.yaml` in bazaar-config; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
 3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in bazaar-config's `<name>-service.yaml`.
-4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` and `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
-5. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` and a context-load test as described above.
+4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` plus `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}` and `DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` and `discovery-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
+5. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` (config client and Eureka client disabled) and a context-load test as described above.
 6. Update the services table in `README.md`.

@@ -7,3 +7,7 @@ spring:
     import:
       - file:../config-repo/application.yaml
       - file:../config-repo/inventory-service.yaml
+
+eureka:
+  client:
+    enabled: false

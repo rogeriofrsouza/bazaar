@@ -24,10 +24,13 @@ services:
       DB_USERNAME: ${CATALOG_DB_USERNAME}
       DB_PASSWORD: ${CATALOG_DB_PASSWORD}
       CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
     depends_on:
       catalog-service-db:
         condition: service_healthy
       config-server:
+        condition: service_started
+      discovery-server:
         condition: service_started
 
   inventory-service:
@@ -41,8 +44,11 @@ services:
       DB_USERNAME: ${INVENTORY_DB_USERNAME}
       DB_PASSWORD: ${INVENTORY_DB_PASSWORD}
       CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
     depends_on:
       inventory-service-db:
         condition: service_healthy
       config-server:
+        condition: service_started
+      discovery-server:
         condition: service_started
