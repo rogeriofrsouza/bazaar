@@ -67,3 +67,23 @@ services:
         condition: service_started
       discovery-server:
         condition: service_started
+
+  order-service:
+    container_name: order-service
+    image: rogeriofrsouza/bazaar-order-service
+    restart: on-failure
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: ${ORDER_DB_URL}
+      DB_USERNAME: ${ORDER_DB_USERNAME}
+      DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
+    depends_on:
+      order-service-db:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started

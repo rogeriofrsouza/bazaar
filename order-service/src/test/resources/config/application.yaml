@@ -1,0 +1,21 @@
+server:
+  port: 8083
+
+spring:
+  cloud:
+    config:
+      enabled: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+eureka:
+  client:
+    enabled: false
+
+bazaar:
+  gateway-url: http://localhost:8080

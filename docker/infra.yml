@@ -35,6 +35,24 @@ services:
       timeout: 5s
       retries: 5
 
+  order-service-db:
+    container_name: order-service-db
+    image: postgres:18-alpine
+    ports:
+      - "${ORDER_DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${ORDER_DB_USERNAME}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD}
+      POSTGRES_DB: orders
+    volumes:
+      - order-service-db-data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   catalog-service-db-data:
   inventory-service-db-data:
+  order-service-db-data:

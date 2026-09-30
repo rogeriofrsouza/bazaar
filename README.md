@@ -19,6 +19,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 | `api-gateway`       | 8080 | —                                       | Single entry point, routes `/api/**` to services, hosts Swagger UI |
 | `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                                            |
 | `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                                      |
+| `order-service`     | 8083 | `order-service-db` (host port 5434)     | Orders and checkout                                                |
 
 ## Project structure
 
@@ -30,6 +31,7 @@ bazaar/
 ├── api-gateway/         # API gateway (Spring Cloud Gateway)
 ├── catalog-service/     # Catalog microservice
 ├── inventory-service/   # Inventory microservice
+├── order-service/       # Order microservice
 └── docker/
     ├── .env             # Variables used by the compose files
     ├── infra.yml        # Infrastructure (databases, brokers, ...)
@@ -76,7 +78,7 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl config-server,discovery-server,api-gateway,catalog-service,inventory-service spring-boot:build-image -DskipTests
+   ./mvnw -pl config-server,discovery-server,api-gateway,catalog-service,inventory-service,order-service spring-boot:build-image -DskipTests
    ```
    Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
 2. Start infrastructure and apps:
@@ -106,11 +108,11 @@ Service settings live in the [bazaar-config](https://github.com/rogeriofrsouza/b
 
 The `<service>.yaml` files in bazaar-config read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
 
-| Variable      | `catalog-service` default                  | `inventory-service` default                  |
-|---------------|--------------------------------------------|----------------------------------------------|
-| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` |
-| `DB_USERNAME` | `catalog`                                  | `inventory`                                  |
-| `DB_PASSWORD` | `catalog`                                  | `inventory`                                  |
+| Variable      | `catalog-service` default                  | `inventory-service` default                  | `order-service` default                   |
+|---------------|--------------------------------------------|----------------------------------------------|-------------------------------------------|
+| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` | `jdbc:postgresql://localhost:5434/orders` |
+| `DB_USERNAME` | `catalog`                                  | `inventory`                                  | `orders`                                  |
+| `DB_PASSWORD` | `catalog`                                  | `inventory`                                  | `orders`                                  |
 
 `CONFIG_SERVER_URL` (default `http://localhost:8888`) points each service at the config server. Services fail fast if the config server can't be reached; in Docker, `restart: on-failure` restarts them until it is up.
 
@@ -136,6 +138,7 @@ All servers run on virtual threads (`spring.threads.virtual.enabled`): the share
 |------------------------------------------|---------------------|
 | `/api/products/**`, `/api/categories/**` | `catalog-service`   |
 | `/api/inventory/**`                      | `inventory-service` |
+| `/api/orders/**`                         | `order-service`     |
 | `/<service>/v3/api-docs`                 | `<service>`         |
 
 The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), since a YAML `lb://` URI can't take the service name from the path.
