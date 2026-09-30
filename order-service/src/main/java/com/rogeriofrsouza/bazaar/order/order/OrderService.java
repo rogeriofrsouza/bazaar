@@ -7,9 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -34,22 +37,40 @@ public class OrderService {
 
     @Transactional
     public OrderResponse place(CreateOrderRequest request) {
-        List<OrderItem> items = new ArrayList<>();
-        Currency currency = null;
+        Set<String> codes = request.items()
+                .stream()
+                .map(item -> item.productCode().toUpperCase())
+                .collect(Collectors.toSet());
 
-        for (OrderItemRequest itemRequest : request.items()) {
-            CatalogProduct product = catalogClient.getProduct(itemRequest.productCode());
+        Map<String, CatalogProduct> products = catalogClient.getProducts(codes)
+                .stream()
+                .collect(Collectors.toMap(CatalogProduct::code, Function.identity()));
 
-            if (currency == null) {
-                currency = product.currency();
-            } else if (!currency.equals(product.currency())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All products in an order must share one currency");
-            }
-
-            items.add(OrderItem.create(product.code(), product.name(), product.price(), itemRequest.quantity()));
+        if (products.size() < codes.size()) {
+            List<String> missing = codes.stream()
+                    .filter(code -> !products.containsKey(code))
+                    .sorted()
+                    .toList();
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Products not found: " + String.join(", ", missing));
         }
 
-        Order order = Order.place(orderNumberGenerator.generate(), currency, items);
+        Set<Currency> currencies = products.values().stream()
+                .map(CatalogProduct::currency)
+                .collect(Collectors.toSet());
+
+        if (currencies.size() > 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All products in an order must share one currency");
+        }
+
+        List<OrderItem> items = request.items()
+                .stream()
+                .map(item -> {
+                    CatalogProduct product = products.get(item.productCode().toUpperCase());
+                    return OrderItem.create(product.code(), product.name(), product.price(), item.quantity());
+                })
+                .toList();
+
+        Order order = Order.place(orderNumberGenerator.generate(), currencies.iterator().next(), items);
         return OrderResponse.from(orderRepository.save(order));
     }
 }

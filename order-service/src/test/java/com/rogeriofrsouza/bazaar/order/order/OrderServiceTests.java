@@ -19,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
 
 @SpringBootTest
@@ -36,10 +37,10 @@ class OrderServiceTests {
 
     @Test
     void placesOrderWithCatalogPrices() {
-        given(catalogClient.getProduct("AAAA2222"))
-                .willReturn(new CatalogProduct("AAAA2222", "Keyboard", new BigDecimal("150.00"), BRL));
-        given(catalogClient.getProduct("BBBB3333"))
-                .willReturn(new CatalogProduct("BBBB3333", "Mouse", new BigDecimal("49.90"), BRL));
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct("AAAA2222", "Keyboard", new BigDecimal("150.00"), BRL),
+                new CatalogProduct("BBBB3333", "Mouse", new BigDecimal("49.90"), BRL)
+        ));
 
         OrderResponse placed = orderService.place(new CreateOrderRequest(List.of(
                 new OrderItemRequest("AAAA2222", 2),
@@ -61,10 +62,10 @@ class OrderServiceTests {
 
     @Test
     void rejectsMixedCurrencies() {
-        given(catalogClient.getProduct("CCCC4444"))
-                .willReturn(new CatalogProduct("CCCC4444", "Monitor", new BigDecimal("900.00"), BRL));
-        given(catalogClient.getProduct("DDDD5555"))
-                .willReturn(new CatalogProduct("DDDD5555", "Cable", new BigDecimal("9.99"), USD));
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct("CCCC4444", "Monitor", new BigDecimal("900.00"), BRL),
+                new CatalogProduct("DDDD5555", "Cable", new BigDecimal("9.99"), USD)
+        ));
 
         CreateOrderRequest request = new CreateOrderRequest(List.of(
                 new OrderItemRequest("CCCC4444", 1),
@@ -74,6 +75,24 @@ class OrderServiceTests {
         assertThatThrownBy(() -> orderService.place(request))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void rejectsUnknownProducts() {
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct("EEEE6666", "Headset", new BigDecimal("199.00"), BRL)
+        ));
+
+        CreateOrderRequest request = new CreateOrderRequest(List.of(
+                new OrderItemRequest("EEEE6666", 1),
+                new OrderItemRequest("FFFF7777", 1)
+        ));
+
+        assertThatThrownBy(() -> orderService.place(request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).contains("FFFF7777");
+                });
     }
 
     @Test
