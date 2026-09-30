@@ -1,6 +1,7 @@
 package com.rogeriofrsouza.bazaar.catalog.product;
 
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -23,7 +24,7 @@ class ProductController {
 
     @GetMapping
     PagedModel<ProductResponse> list(@RequestParam(required = false) String category,
-                                     @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+                                     @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         Page<ProductResponse> page = productService.findActive(category, pageable);
         return new PagedModel<>(page);
     }
