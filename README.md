@@ -24,7 +24,6 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 bazaar/
 ├── pom.xml              # Parent POM (modules, Spring Cloud BOM, shared OCI image config)
 ├── config-server/       # Spring Cloud Config server
-├── config-repo/         # Configuration files served by config-server
 ├── catalog-service/     # Catalog microservice
 ├── inventory-service/   # Inventory microservice
 └── docker/
@@ -52,7 +51,7 @@ Use this to run several services together from the IDE.
 2. Run `ConfigServerApplication` from the IDE.
 3. Run each service's main class from the IDE (e.g. `CatalogServiceApplication`).
 
-Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed.
+Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed. The config server reads them from the [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository, so local edits there take effect only after they are pushed.
 
 ### Option 2: A single service with Testcontainers
 
@@ -99,9 +98,9 @@ docker compose -f docker/infra.yml -f docker/apps.yml down -v   # also remove vo
 
 ## Configuration
 
-Service settings live in `config-repo/` and are served by `config-server` (see below). Each service's own `application.yaml` only holds its name and how to reach the config server.
+Service settings live in the [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository and are served by `config-server` (see below). Each service's own `application.yaml` only holds its name and how to reach the config server.
 
-The files in `config-repo/<service>.yaml` read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
+The `<service>.yaml` files in bazaar-config read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
 
 | Variable      | `catalog-service` default                  | `inventory-service` default                  |
 |---------------|--------------------------------------------|----------------------------------------------|
@@ -115,7 +114,7 @@ In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or productio
 
 ### Config server
 
-`config-server` runs Spring Cloud Config with the `native` backend and serves the files in `config-repo/`: `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The location comes from `CONFIG_SEARCH_LOCATIONS`, which defaults to `file:../config-repo/` (relative to the `config-server` module, the working directory when run from the IDE or with `./mvnw -pl config-server spring-boot:run`). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo/`.
+`config-server` runs Spring Cloud Config with the git backend. It clones `CONFIG_GIT_URI` (default `https://github.com/rogeriofrsouza/bazaar-config.git`) at `CONFIG_GIT_LABEL` (default `main`) on startup and serves `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. Config changes take effect once they are pushed to bazaar-config. Set `CONFIG_GIT_LABEL` to a branch to try unmerged config.
 
 ## Tests
 

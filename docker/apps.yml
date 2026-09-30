@@ -6,10 +6,6 @@ services:
     image: rogeriofrsouza/bazaar-config-server
     ports:
       - "8888:8888"
-    environment:
-      CONFIG_SEARCH_LOCATIONS: ${CONFIG_SERVER_SEARCH_LOCATIONS}
-    volumes:
-      - ../config-repo:/config-repo:ro
 
   catalog-service:
     container_name: catalog-service

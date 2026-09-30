@@ -8,8 +8,7 @@ Bazaar is an e-commerce platform built as Spring Boot microservices (Java 25, Sp
 
 ```
 pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
-config-server/       # Spring Cloud Config server (native backend, no database)
-config-repo/         # Config files served by config-server (application.yaml, <app-name>.yaml)
+config-server/       # Spring Cloud Config server (git backend on bazaar-config, no database)
 catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
 docker/infra.yml     # Databases, brokers, etc.
@@ -35,7 +34,7 @@ docker/apps.yml      # Microservice containers
 
 ## Configuration and Docker
 
-- Service settings live in `config-repo/`: `application.yaml` for shared settings, `<service>.yaml` for one service. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
+- Service settings live in the separate [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository (local clone usually at `../bazaar-config`): `application.yaml` for shared settings, `<service>.yaml` for one service. `config-server` reads it with the git backend (`CONFIG_GIT_URI`, `CONFIG_GIT_LABEL`), so changes take effect only after they are pushed. There is no `native` profile and no volume mount; don't reintroduce them. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
 - Config files read connection settings from env vars with **localhost defaults**, e.g. `url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}`. The client resolves the placeholders. Running from the IDE needs no profile. Containers and deployed environments override the env vars.
 - There is no `spring-boot-docker-compose` and no `local` profile. Don't reintroduce them.
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
@@ -56,8 +55,8 @@ docker/apps.yml      # Microservice containers
 ## Adding a new microservice
 
 1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited. Add `spring-cloud-starter-config`.
-2. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `config-repo/<name>-service.yaml`; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
-3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in `config-repo/<name>-service.yaml`.
+2. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `<name>-service.yaml` in bazaar-config; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
+3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in bazaar-config's `<name>-service.yaml`.
 4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` and `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
 5. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` and a context-load test as described above.
 6. Update the services table in `README.md`.
