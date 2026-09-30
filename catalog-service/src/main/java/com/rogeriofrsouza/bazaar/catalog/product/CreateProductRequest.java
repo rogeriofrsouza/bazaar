@@ -7,10 +7,6 @@ import java.util.Currency;
 
 public record CreateProductRequest(
     @NotBlank
-    @Pattern(regexp = ProductCode.REGEX)
-    String code,
-
-    @NotBlank
     @Size(max = 200)
     String name,
 

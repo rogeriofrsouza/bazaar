@@ -12,7 +12,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByStatusAndCategorySlug(ProductStatus status, String slug, Pageable pageable);
 
-    Optional<Product> findByCodeAndStatus(ProductCode code, ProductStatus status);
+    Optional<Product> findByCodeAndStatus(String code, ProductStatus status);
 
-    boolean existsByCode(ProductCode code);
+    boolean existsByCode(String code);
 }

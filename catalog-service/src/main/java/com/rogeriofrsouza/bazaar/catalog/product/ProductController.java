@@ -29,7 +29,7 @@ class ProductController {
     }
 
     @GetMapping("/{code}")
-    ProductResponse get(@PathVariable ProductCode code) {
+    ProductResponse get(@PathVariable String code) {
         return productService.findActiveByCode(code);
     }
 
@@ -38,9 +38,9 @@ class ProductController {
         ProductResponse product = productService.create(request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-            .path("/{code}")
-            .buildAndExpand(product.code())
-            .toUri();
+                .path("/{code}")
+                .buildAndExpand(product.code())
+                .toUri();
 
         return ResponseEntity.created(location).body(product);
     }

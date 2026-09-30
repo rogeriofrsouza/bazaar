@@ -28,7 +28,7 @@ public class Product {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 8)
-    private ProductCode code;
+    private String code;
 
     @Column(nullable = false, length = 200)
     private String name;
@@ -64,7 +64,7 @@ public class Product {
     }
 
     private Product(
-        ProductCode code,
+        String code,
         String name,
         String description,
         BigDecimal price,
@@ -83,15 +83,15 @@ public class Product {
         this.category = category;
     }
 
-     public static Product create(
-         ProductCode code,
-         String name,
-         String description,
-         BigDecimal price,
-         Currency currency,
-         String imageUrl,
-         Category category
-     ) {
+    public static Product create(
+        String code,
+        String name,
+        String description,
+        BigDecimal price,
+        Currency currency,
+        String imageUrl,
+        Category category
+    ) {
         return new Product(code, name, description, price, currency, imageUrl, ProductStatus.ACTIVE, category);
     }
 
@@ -99,7 +99,7 @@ public class Product {
         return id;
     }
 
-    public ProductCode getCode() {
+    public String getCode() {
         return code;
     }
 

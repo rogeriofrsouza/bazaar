@@ -14,47 +14,45 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductCodeGenerator productCodeGenerator;
 
-    ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+    ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
+                   ProductCodeGenerator productCodeGenerator) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.productCodeGenerator = productCodeGenerator;
     }
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> findActive(String category, Pageable pageable) {
         Page<Product> products = category == null
-            ? productRepository.findByStatus(ProductStatus.ACTIVE, pageable)
-            : productRepository.findByStatusAndCategorySlug(ProductStatus.ACTIVE, category, pageable);
+                ? productRepository.findByStatus(ProductStatus.ACTIVE, pageable)
+                : productRepository.findByStatusAndCategorySlug(ProductStatus.ACTIVE, category, pageable);
 
         return products.map(ProductResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse findActiveByCode(ProductCode code) {
-        return productRepository.findByCodeAndStatus(code, ProductStatus.ACTIVE)
-            .map(ProductResponse::from)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product " + code.value() + " not found"));
+    public ProductResponse findActiveByCode(String code) {
+        return productRepository.findByCodeAndStatus(code.toUpperCase(), ProductStatus.ACTIVE)
+                .map(ProductResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product " + code + " not found"));
     }
 
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
-        ProductCode code = new ProductCode(request.code());
-        if (productRepository.existsByCode(code)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product " + code.value() + " already exists");
-        }
-
         Category category = categoryRepository.findBySlug(request.category())
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, "Category " + request.category() + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Category " + request.category() + " not found"));
 
         Product product = Product.create(
-            code,
-            request.name(),
-            request.description(),
-            request.price(),
-            request.currency(),
-            request.imageUrl(),
-            category
+                productCodeGenerator.generate(),
+                request.name(),
+                request.description(),
+                request.price(),
+                request.currency(),
+                request.imageUrl(),
+                category
         );
         return ProductResponse.from(productRepository.save(product));
     }

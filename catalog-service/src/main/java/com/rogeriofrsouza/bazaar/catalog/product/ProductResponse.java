@@ -12,7 +12,7 @@ public record ProductResponse(
 ) {
     public static ProductResponse from(Product product) {
         return new ProductResponse(
-            product.getCode().value(),
+            product.getCode(),
             product.getName(),
             product.getDescription(),
             product.getPrice(),
