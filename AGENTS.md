@@ -50,7 +50,7 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
-- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false` and imports `file:../config-repo/application.yaml` and `file:../config-repo/<service>.yaml`, so tests need no config or discovery server.
+- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the bazaar-config settings tests rely on (`server.port`, shared `spring.jpa` / `spring.mvc` settings), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
 - `config-server` and `discovery-server` have no containers, so they only have a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice

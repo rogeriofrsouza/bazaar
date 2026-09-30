@@ -1,12 +1,17 @@
-# Tests read config-repo/ directly instead of calling the config server.
+server:
+  port: 8082
+
 spring:
   cloud:
     config:
       enabled: false
-  config:
-    import:
-      - file:../config-repo/application.yaml
-      - file:../config-repo/inventory-service.yaml
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
 
 eureka:
   client:

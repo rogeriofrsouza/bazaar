@@ -59,7 +59,7 @@ Services fetch their settings from the config server at `localhost:8888`, and th
 
 Use this to work on one service in isolation without starting anything by hand.
 
-Run the service's test main class from the IDE (e.g. `TestCatalogServiceApplication` in `catalog-service/src/test/java`). It starts the service's own dependencies with Testcontainers (see `ContainersConfig`) and wires the connection details automatically. Docker must be running. No config server is needed: the test classpath disables the config client and imports the service's files from `config-repo/` directly (see `src/test/resources/config/application.yaml`).
+Run the service's test main class from the IDE (e.g. `TestCatalogServiceApplication` in `catalog-service/src/test/java`). It starts the service's own dependencies with Testcontainers (see `ContainersConfig`) and wires the connection details automatically. Docker must be running. No config or discovery server is needed: the test classpath disables both clients and carries its own copy of the settings the service needs (see `src/test/resources/config/application.yaml`).
 
 Or from the terminal:
 ```sh
