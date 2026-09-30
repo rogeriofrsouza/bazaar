@@ -13,6 +13,21 @@ services:
     ports:
       - "8761:8761"
 
+  api-gateway:
+    container_name: api-gateway
+    image: rogeriofrsouza/bazaar-api-gateway
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
+    depends_on:
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+
   catalog-service:
     container_name: catalog-service
     image: rogeriofrsouza/bazaar-catalog-service

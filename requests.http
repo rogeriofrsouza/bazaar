@@ -3,4 +3,14 @@ GET http://localhost:8888/inventory-service/default
 ###
 GET http://localhost:8888/catalog-service/default
 ###
+GET http://localhost:8888/api-gateway/default
+###
+
+# API gateway
+GET http://localhost:8080/api/categories
+###
+GET http://localhost:8080/api/products
+###
+GET http://localhost:8080/api/inventory
+###
 
