@@ -62,4 +62,5 @@ docker/apps.yml      # Microservice containers
 3. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in bazaar-config's `<name>-service.yaml`.
 4. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` plus `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}` and `DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` and `discovery-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
 5. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` (config client and Eureka client disabled) and a context-load test as described above.
-6. Update the services table in `README.md`.
+6. Add `springdoc-openapi-starter-webmvc-api` and an `OpenApiConfig` (copied from an existing service) whose server is `${bazaar.gateway-url}`. In bazaar-config's `api-gateway.yaml`, add a `springdoc.swagger-ui.urls` entry with `url: /<name>-service/v3/api-docs`; the gateway's `ApiDocsRouteConfig` already routes it.
+7. Update the services table and the gateway routing table in `README.md`.

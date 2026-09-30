@@ -12,13 +12,13 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 
 ## Services
 
-| Service             | Port | Database                                | Description                                      |
-|---------------------|------|-----------------------------------------|--------------------------------------------------|
-| `config-server`     | 8888 | —                                       | Centralized configuration (Spring Cloud Config)  |
-| `discovery-server`  | 8761 | —                                       | Service registry (Spring Cloud Netflix Eureka)   |
-| `api-gateway`       | 8080 | —                                       | Single entry point, routes `/api/**` to services |
-| `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                          |
-| `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                    |
+| Service             | Port | Database                                | Description                                                        |
+|---------------------|------|-----------------------------------------|--------------------------------------------------------------------|
+| `config-server`     | 8888 | —                                       | Centralized configuration (Spring Cloud Config)                    |
+| `discovery-server`  | 8761 | —                                       | Service registry (Spring Cloud Netflix Eureka)                     |
+| `api-gateway`       | 8080 | —                                       | Single entry point, routes `/api/**` to services, hosts Swagger UI |
+| `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                                            |
+| `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                                      |
 
 ## Project structure
 
@@ -136,6 +136,13 @@ All servers run on virtual threads (`spring.threads.virtual.enabled`): the share
 |------------------------------------------|---------------------|
 | `/api/products/**`, `/api/categories/**` | `catalog-service`   |
 | `/api/inventory/**`                      | `inventory-service` |
+| `/<service>/v3/api-docs`                 | `<service>`         |
+
+The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), since a YAML `lb://` URI can't take the service name from the path.
+
+#### API documentation
+
+Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api-docs`. The gateway proxies each spec as `/<service>/v3/api-docs` and hosts one Swagger UI for all of them at `http://localhost:8080/swagger-ui.html`, with a dropdown to pick the service. The specs list the gateway (`GATEWAY_URL`, default `http://localhost:8080`) as their server, so "Try it out" requests go through the gateway.
 
 ## Tests
 
