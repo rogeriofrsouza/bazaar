@@ -118,6 +118,8 @@ The `<service>.yaml` files in bazaar-config read connection settings from enviro
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
+All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in bazaar-config enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
+
 ### Config server
 
 `config-server` runs Spring Cloud Config with the git backend. It clones `CONFIG_GIT_URI` (default `https://github.com/rogeriofrsouza/bazaar-config.git`) at `CONFIG_GIT_LABEL` (default `main`) on startup and serves `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. Config changes take effect once they are pushed to bazaar-config. Set `CONFIG_GIT_LABEL` to a branch to try unmerged config.
@@ -134,8 +136,6 @@ In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or productio
 |------------------------------------------|---------------------|
 | `/api/products/**`, `/api/categories/**` | `catalog-service`   |
 | `/api/inventory/**`                      | `inventory-service` |
-
-The gateway runs on virtual threads (`spring.threads.virtual.enabled`), so proxied requests don't hold platform threads while they wait on downstream services.
 
 ## Tests
 
