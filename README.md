@@ -15,6 +15,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 | Service             | Port | Database                                | Description                                      |
 |---------------------|------|-----------------------------------------|--------------------------------------------------|
 | `config-server`     | 8888 | —                                       | Centralized configuration (Spring Cloud Config)  |
+| `discovery-server`  | 8761 | —                                       | Service registry (Spring Cloud Netflix Eureka)   |
 | `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                          |
 | `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                    |
 
@@ -24,6 +25,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 bazaar/
 ├── pom.xml              # Parent POM (modules, Spring Cloud BOM, shared OCI image config)
 ├── config-server/       # Spring Cloud Config server
+├── discovery-server/    # Eureka discovery server
 ├── catalog-service/     # Catalog microservice
 ├── inventory-service/   # Inventory microservice
 └── docker/
@@ -48,7 +50,7 @@ Use this to run several services together from the IDE.
    ```sh
    docker compose -f docker/infra.yml up -d
    ```
-2. Run `ConfigServerApplication` from the IDE.
+2. Run `ConfigServerApplication` and `DiscoveryServerApplication` from the IDE.
 3. Run each service's main class from the IDE (e.g. `CatalogServiceApplication`).
 
 Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed. The config server reads them from the [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository, so local edits there take effect only after they are pushed.
@@ -72,7 +74,7 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl config-server,catalog-service,inventory-service spring-boot:build-image -DskipTests
+   ./mvnw -pl config-server,discovery-server,catalog-service,inventory-service spring-boot:build-image -DskipTests
    ```
    Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
 2. Start infrastructure and apps:
@@ -115,6 +117,10 @@ In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or productio
 ### Config server
 
 `config-server` runs Spring Cloud Config with the git backend. It clones `CONFIG_GIT_URI` (default `https://github.com/rogeriofrsouza/bazaar-config.git`) at `CONFIG_GIT_LABEL` (default `main`) on startup and serves `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. Config changes take effect once they are pushed to bazaar-config. Set `CONFIG_GIT_LABEL` to a branch to try unmerged config.
+
+### Discovery server
+
+`discovery-server` runs a standalone Spring Cloud Netflix Eureka server on port 8761. Its settings live in its own `application.yaml`, so it does not need the config server. The Eureka dashboard is at `http://localhost:8761`.
 
 ## Tests
 

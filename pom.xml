@@ -23,6 +23,7 @@
 
     <modules>
         <module>config-server</module>
+        <module>discovery-server</module>
         <module>catalog-service</module>
         <module>inventory-service</module>
     </modules>

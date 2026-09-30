@@ -7,6 +7,12 @@ services:
     ports:
       - "8888:8888"
 
+  discovery-server:
+    container_name: discovery-server
+    image: rogeriofrsouza/bazaar-discovery-server
+    ports:
+      - "8761:8761"
+
   catalog-service:
     container_name: catalog-service
     image: rogeriofrsouza/bazaar-catalog-service

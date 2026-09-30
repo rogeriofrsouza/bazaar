@@ -9,6 +9,7 @@ Bazaar is an e-commerce platform built as Spring Boot microservices (Java 25, Sp
 ```
 pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
 config-server/       # Spring Cloud Config server (git backend on bazaar-config, no database)
+discovery-server/    # Eureka server, standalone (own application.yaml, no config client, no database)
 catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
 docker/infra.yml     # Databases, brokers, etc.
@@ -50,7 +51,7 @@ docker/apps.yml      # Microservice containers
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
 - Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and imports `file:../config-repo/application.yaml` and `file:../config-repo/<service>.yaml`, so tests need no config server.
-- `config-server` has no containers, so it only has a plain `@SpringBootTest` context-load test.
+- `config-server` and `discovery-server` have no containers, so they only have a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice
 
