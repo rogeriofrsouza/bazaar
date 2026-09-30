@@ -1,0 +1,6 @@
+# Config-server
+GET http://localhost:8888/inventory-service/default
+###
+GET http://localhost:8888/catalog-service/default
+###
+
