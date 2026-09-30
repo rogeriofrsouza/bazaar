@@ -19,7 +19,8 @@ docker/apps.yml      # Microservice containers
 
 ## Workflow rules
 
-- **Don't verify changes at runtime.** Don't start Docker Compose, run the app, or curl endpoints, and don't leave those steps in plans. Don't run Maven builds or tests unless asked. If a check would help, name the command so the user can run it.
+- **Don't verify changes at runtime.** Don't start Docker Compose, run the app, or curl endpoints, and don't leave those steps in plans.
+- **Verify the build after changes.** Run `./mvnw verify` once you're done, scoped to the affected modules where that makes sense (`./mvnw -pl <module> -am verify`), and report the result. Testcontainers tests run as part of it, so Docker must be running. Run other Maven goals (`compile`, `package`, `spring-boot:build-image`) only when asked.
 - **Commits:** use Conventional Commits with a specific type and scope, e.g. `feat(catalog): ...`, `build(pom): ...`, `ci(docker): ...`, `docs(readme): ...`. Use `chore` only for real housekeeping. Commit only when asked.
 - Match the style of the surrounding code; `.editorconfig` sets 4-space indentation, LF line endings and 120 columns.
 
