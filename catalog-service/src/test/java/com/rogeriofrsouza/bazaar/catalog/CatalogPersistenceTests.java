@@ -8,6 +8,7 @@ import com.rogeriofrsouza.bazaar.catalog.product.ProductRepository;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductResponse;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductService;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductStatus;
+import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -85,6 +86,10 @@ class CatalogPersistenceTests {
                 .extracting(CategoryResponse::slug)
                 .containsExactlyInAnyOrder("cameras", "headphones", "phones", "smartwatches", "tablets", "tvs");
         assertThat(electronics.children()).allSatisfy(child -> assertThat(child.children()).isNull());
+        assertThat(roots).allSatisfy(root -> {
+            assertThat(TSID.isValid(root.id())).isTrue();
+            assertThat(root.children()).allSatisfy(child -> assertThat(TSID.isValid(child.id())).isTrue());
+        });
     }
 
     private static CreateProductRequest request(String name, String category) {

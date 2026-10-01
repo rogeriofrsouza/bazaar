@@ -20,13 +20,15 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryResponse> list() {
         List<Category> categories = categoryRepository.findAll(Sort.by("name"));
+
         Map<Long, List<Category>> childrenByParent = categories.stream()
                 .filter(category -> category.getParentId() != null)
                 .collect(Collectors.groupingBy(Category::getParentId));
 
         return categories.stream()
                 .filter(category -> category.getParentId() == null)
-                .map(root -> CategoryResponse.from(root, childrenByParent.getOrDefault(root.getId(), List.of())))
+                .map(category -> CategoryResponse.from(
+                        category, childrenByParent.getOrDefault(category.getId(), List.of())))
                 .toList();
     }
 }

@@ -20,6 +20,7 @@
         <java.version>25</java.version>
         <spring-cloud.version>2025.1.3</spring-cloud.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <hypersistence-tsid.version>2.1.4</hypersistence-tsid.version>
     </properties>
 
     <modules>
@@ -46,6 +47,11 @@
                 <version>${springdoc.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.hypersistence</groupId>
+                <artifactId>hypersistence-tsid</artifactId>
+                <version>${hypersistence-tsid.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
