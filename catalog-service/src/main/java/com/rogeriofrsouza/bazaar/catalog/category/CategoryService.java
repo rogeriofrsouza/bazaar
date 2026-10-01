@@ -1,9 +1,12 @@
 package com.rogeriofrsouza.bazaar.catalog.category;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
@@ -16,9 +19,14 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> list() {
-        return categoryRepository.findWithChildren()
-                .stream()
-                .map(CategoryResponse::from)
+        List<Category> categories = categoryRepository.findAll(Sort.by("name"));
+        Map<Long, List<Category>> childrenByParent = categories.stream()
+                .filter(category -> category.getParentId() != null)
+                .collect(Collectors.groupingBy(Category::getParentId));
+
+        return categories.stream()
+                .filter(category -> category.getParentId() == null)
+                .map(root -> CategoryResponse.from(root, childrenByParent.getOrDefault(root.getId(), List.of())))
                 .toList();
     }
 }

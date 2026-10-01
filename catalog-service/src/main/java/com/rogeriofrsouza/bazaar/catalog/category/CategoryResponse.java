@@ -7,8 +7,8 @@ public record CategoryResponse(
         String name,
         List<CategoryResponse> children
 ) {
-    public static CategoryResponse from(Category category) {
-        List<CategoryResponse> childrenList = category.getChildren()
+    public static CategoryResponse from(Category category, List<Category> children) {
+        List<CategoryResponse> childrenList = children
                 .stream()
                 .map(child -> new CategoryResponse(child.getSlug(), child.getName(), null))
                 .toList();

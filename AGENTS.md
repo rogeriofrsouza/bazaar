@@ -32,8 +32,10 @@ docker/apps.yml      # Microservice containers
 - **DTOs:** records named `XResponse` / `CreateXRequest`, mapped with a static `XResponse.from(entity)`.
 - **Errors:** throw `ResponseStatusException`. RFC 9457 problem details are enabled (`spring.mvc.problemdetails.enabled`).
 - **Entities:** protected no-arg constructor, getters only, static factory methods for creation (e.g. `Product.create(...)`).
-- **Loading relationships:** shape the data in the query (map the association, then use a `left join fetch` `@Query`). Don't load flat rows and assemble graphs in Java.
-- **Schema:** Flyway migrations in `src/main/resources/db/migration` (`V<n>__<description>.sql`). Hibernate runs with `ddl-auto: validate`, so every schema change needs a migration. Never edit an applied migration.
+- **Loading relationships (JPA services):** shape the data in the query (map the association, then use a `left join fetch` `@Query`). Don't load flat rows and assemble graphs in Java.
+- **Optional list filters (JPA services):** a `Specification` per filter (in an `<Entity>Specifications` class) passed to `repository.findAll(spec, pageable)`.
+- **catalog-service uses Spring Data JDBC**, not JPA. Aggregates reference each other by id (`Long categoryId`), with no mapped associations. Load flat rows and assemble trees in the service (e.g. `CategoryService.list()`). Optional filters are `Criteria` (in an `<Entity>Criteria` class, `Criteria.empty()` when absent) run through `JdbcAggregateOperations.findAll(query, type, pageable)`. Custom type converters and auditing live in `JdbcConfig`.
+- **Schema:** Flyway migrations in `src/main/resources/db/migration` (`V<n>__<description>.sql`). In JPA services Hibernate runs with `ddl-auto: validate`, so every schema change needs a migration. Spring Data JDBC has no schema validation, so catalog-service relies on its persistence tests. Never edit an applied migration.
 
 ## Configuration and Docker
 
@@ -52,7 +54,7 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
-- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the bazaar-config settings tests rely on (`server.port`, shared `spring.jpa` / `spring.mvc` settings), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
+- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the bazaar-config settings tests rely on (`server.port`, shared `spring.jpa` / `spring.mvc` settings; catalog-service has no `spring.jpa`), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
 - `config-server`, `discovery-server` and `api-gateway` have no containers, so they only have a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice

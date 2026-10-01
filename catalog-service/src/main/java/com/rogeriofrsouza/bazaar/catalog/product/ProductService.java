@@ -4,7 +4,9 @@ import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jdbc.core.JdbcAggregateOperations;
+import org.springframework.data.relational.core.query.Criteria;
+import org.springframework.data.relational.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductSpecifications.codeIn;
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductSpecifications.hasStatus;
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductSpecifications.inCategory;
+import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.codeIn;
+import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.hasStatus;
+import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.inCategory;
 
 @Service
 public class ProductService {
@@ -23,22 +27,36 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductCodeGenerator productCodeGenerator;
+    private final JdbcAggregateOperations jdbcAggregateOperations;
 
     ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-                   ProductCodeGenerator productCodeGenerator) {
+                   ProductCodeGenerator productCodeGenerator, JdbcAggregateOperations jdbcAggregateOperations) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.productCodeGenerator = productCodeGenerator;
+        this.jdbcAggregateOperations = jdbcAggregateOperations;
     }
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> findActive(String category, Collection<String> codes, Pageable pageable) {
-        List<String> upperCodes = codes == null ? null : codes.stream().map(String::toUpperCase).toList();
-        Specification<Product> specification = hasStatus(ProductStatus.ACTIVE)
-                .and(inCategory(category))
-                .and(codeIn(upperCodes));
+        Long categoryId = null;
+        if (category != null) {
+            Optional<Category> found = categoryRepository.findBySlug(category);
+            if (found.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            categoryId = found.get().getId();
+        }
 
-        return productRepository.findAll(specification, pageable)
+        List<String> upperCodes = codes == null ? null : codes.stream().map(String::toUpperCase).toList();
+        Criteria criteria = Criteria.from(Stream.of(
+                        hasStatus(ProductStatus.ACTIVE),
+                        inCategory(categoryId),
+                        codeIn(upperCodes))
+                .filter(criterion -> !criterion.isEmpty())
+                .toList());
+
+        return jdbcAggregateOperations.findAll(Query.query(criteria), Product.class, pageable)
                 .map(ProductResponse::from);
     }
 
@@ -62,7 +80,7 @@ public class ProductService {
                 request.price(),
                 request.currency(),
                 request.imageUrl(),
-                category
+                category.getId()
         );
         return ProductResponse.from(productRepository.save(product));
     }
