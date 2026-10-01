@@ -2,6 +2,7 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,8 +26,8 @@ class ProductController {
     }
 
     @GetMapping
-    PagedModel<ProductResponse> list(@RequestParam(required = false) String category,
-                                     @RequestParam(required = false) @Size(max = 20) List<String> codes,
+    PagedModel<ProductResponse> list(@RequestParam(required = false) @Nullable String category,
+                                     @RequestParam(required = false) @Size(max = 20) @Nullable List<String> codes,
                                      @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
         Page<ProductResponse> page = productService.findActive(category, codes, pageable);
         return new PagedModel<>(page);

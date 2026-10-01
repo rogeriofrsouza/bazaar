@@ -2,6 +2,7 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.core.JdbcAggregateOperations;
@@ -37,7 +38,8 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponse> findActive(String category, Collection<String> codes, Pageable pageable) {
+    public Page<ProductResponse> findActive(@Nullable String category, @Nullable Collection<String> codes,
+                                            Pageable pageable) {
         Long categoryId = null;
         if (category != null) {
             Optional<Category> found = categoryRepository.findBySlug(category);

@@ -1,6 +1,7 @@
 package com.rogeriofrsouza.bazaar.catalog.product;
 
 import jakarta.validation.constraints.*;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.Currency;
@@ -10,7 +11,7 @@ public record CreateProductRequest(
     @Size(max = 200)
     String name,
 
-    String description,
+    @Nullable String description,
 
     @NotNull
     @DecimalMin("0.00")
@@ -21,7 +22,7 @@ public record CreateProductRequest(
     Currency currency,
 
     @Size(max = 255)
-    String imageUrl,
+    @Nullable String imageUrl,
 
     @NotBlank
     String category

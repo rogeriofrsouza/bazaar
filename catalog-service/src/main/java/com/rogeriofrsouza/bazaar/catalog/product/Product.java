@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -11,29 +12,29 @@ import org.springframework.data.annotation.LastModifiedDate;
 public class Product {
 
     @Id
-    private Long id;
+    private @Nullable Long id;
 
     private String code;
 
     private String name;
 
-    private String description;
+    private @Nullable String description;
 
     private BigDecimal price;
 
     private Currency currency;
 
-    private String imageUrl;
+    private @Nullable String imageUrl;
 
     private ProductStatus status;
 
     private Long categoryId;
 
     @CreatedDate
-    private Instant createdAt;
+    private @Nullable Instant createdAt;
 
     @LastModifiedDate
-    private Instant updatedAt;
+    private @Nullable Instant updatedAt;
 
     protected Product() {
     }
@@ -41,10 +42,10 @@ public class Product {
     private Product(
         String code,
         String name,
-        String description,
+        @Nullable String description,
         BigDecimal price,
         Currency currency,
-        String imageUrl,
+        @Nullable String imageUrl,
         ProductStatus status,
         Long categoryId
     ) {
@@ -61,16 +62,16 @@ public class Product {
     public static Product create(
         String code,
         String name,
-        String description,
+        @Nullable String description,
         BigDecimal price,
         Currency currency,
-        String imageUrl,
+        @Nullable String imageUrl,
         Long categoryId
     ) {
         return new Product(code, name, description, price, currency, imageUrl, ProductStatus.ACTIVE, categoryId);
     }
 
-    public Long getId() {
+    public @Nullable Long getId() {
         return id;
     }
 
@@ -82,7 +83,7 @@ public class Product {
         return name;
     }
 
-    public String getDescription() {
+    public @Nullable String getDescription() {
         return description;
     }
 
@@ -94,7 +95,7 @@ public class Product {
         return currency;
     }
 
-    public String getImageUrl() {
+    public @Nullable String getImageUrl() {
         return imageUrl;
     }
 
@@ -106,11 +107,11 @@ public class Product {
         return categoryId;
     }
 
-    public Instant getCreatedAt() {
+    public @Nullable Instant getCreatedAt() {
         return createdAt;
     }
 
-    public Instant getUpdatedAt() {
+    public @Nullable Instant getUpdatedAt() {
         return updatedAt;
     }
 }

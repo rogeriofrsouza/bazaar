@@ -1,14 +1,16 @@
 package com.rogeriofrsouza.bazaar.catalog.product;
 
+import org.jspecify.annotations.Nullable;
+
 import java.math.BigDecimal;
 
 public record ProductResponse(
     String code,
     String name,
-    String description,
+    @Nullable String description,
     BigDecimal price,
     String currency,
-    String imageUrl
+    @Nullable String imageUrl
 ) {
     public static ProductResponse from(Product product) {
         return new ProductResponse(

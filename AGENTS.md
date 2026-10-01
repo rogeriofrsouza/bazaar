@@ -35,6 +35,7 @@ docker/apps.yml      # Microservice containers
 - **Loading relationships (JPA services):** shape the data in the query (map the association, then use a `left join fetch` `@Query`). Don't load flat rows and assemble graphs in Java.
 - **Optional list filters (JPA services):** a `Specification` per filter (in an `<Entity>Specifications` class) passed to `repository.findAll(spec, pageable)`.
 - **catalog-service uses Spring Data JDBC**, not JPA. Aggregates reference each other by id (`Long categoryId`), with no mapped associations. Load flat rows and assemble trees in the service (e.g. `CategoryService.list()`). Optional filters are `Criteria` (in an `<Entity>Criteria` class, `Criteria.empty()` when absent) run through `JdbcAggregateOperations.findAll(query, type, pageable)`. Custom type converters and auditing live in `JdbcConfig`.
+- **Null-safety (catalog-service):** every package is `@NullMarked` (JSpecify) through its `package-info.java`, so types are non-null by default. Mark nullable fields, parameters and return types with `@Nullable` (`org.jspecify.annotations`, written as a type-use annotation: `private @Nullable String description`). New packages get a `package-info.java`.
 - **Schema:** Flyway migrations in `src/main/resources/db/migration` (`V<n>__<description>.sql`). In JPA services Hibernate runs with `ddl-auto: validate`, so every schema change needs a migration. Spring Data JDBC has no schema validation, so catalog-service relies on its persistence tests. Never edit an applied migration.
 
 ## Configuration and Docker

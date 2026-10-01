@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.catalog.category;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 
 public class Category {
@@ -11,7 +12,7 @@ public class Category {
 
     private String name;
 
-    private Long parentId;
+    private @Nullable Long parentId;
 
     protected Category() {
     }
@@ -28,7 +29,7 @@ public class Category {
         return name;
     }
 
-    public Long getParentId() {
+    public @Nullable Long getParentId() {
         return parentId;
     }
 
