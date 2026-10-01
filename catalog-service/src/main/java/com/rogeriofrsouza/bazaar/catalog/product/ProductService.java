@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.core.JdbcAggregateOperations;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.codeIn;
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.hasStatus;
-import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.inCategory;
+import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.*;
 
 @Service
 public class ProductService {
@@ -56,7 +55,11 @@ public class ProductService {
                 .filter(criterion -> !criterion.isEmpty())
                 .toList());
 
-        return jdbcAggregateOperations.findAll(Query.query(criteria), Product.class, pageable)
+        Query query = Query.query(criteria);
+        List<Product> products = jdbcAggregateOperations.findAll(query.with(pageable), Product.class);
+
+        return PageableExecutionUtils.getPage(
+                        products, pageable, () -> jdbcAggregateOperations.count(query, Product.class))
                 .map(ProductResponse::from);
     }
 
