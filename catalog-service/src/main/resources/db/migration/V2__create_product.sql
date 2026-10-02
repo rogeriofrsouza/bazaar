@@ -1,7 +1,6 @@
 CREATE TABLE product
 (
     id          bigint         PRIMARY KEY,
-    code        varchar(8)     NOT NULL UNIQUE,
     name        varchar(200)   NOT NULL,
     description text,
     price       numeric(12, 2) NOT NULL CHECK (price >= 0),

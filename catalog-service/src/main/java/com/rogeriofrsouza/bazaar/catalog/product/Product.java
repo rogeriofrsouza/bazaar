@@ -17,8 +17,6 @@ public class Product {
     @Id
     private final Long id;
 
-    private final String code;
-
     private final String name;
 
     private final @Nullable String description;
@@ -44,7 +42,6 @@ public class Product {
 
     public Product(
             Long id,
-            String code,
             String name,
             @Nullable String description,
             BigDecimal price,
@@ -55,11 +52,9 @@ public class Product {
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
-        Assert.hasText(code, "Product code must not be blank");
         Assert.hasText(name, "Product name must not be blank");
         Assert.isTrue(price.signum() >= 0, "Product price must not be negative");
         this.id = id;
-        this.code = code;
         this.name = name;
         this.description = description;
         this.price = price;
@@ -72,7 +67,6 @@ public class Product {
     }
 
     public static Product create(
-            String code,
             String name,
             @Nullable String description,
             BigDecimal price,
@@ -81,16 +75,12 @@ public class Product {
             Long categoryId
     ) {
         return new Product(
-                TSID.Factory.getTsid().toLong(), code, name, description, price, currency, imageUrl,
+                TSID.Factory.getTsid().toLong(), name, description, price, currency, imageUrl,
                 ProductStatus.ACTIVE, categoryId, null, null);
     }
 
     public Long getId() {
         return id;
-    }
-
-    public String getCode() {
-        return code;
     }
 
     public String getName() {

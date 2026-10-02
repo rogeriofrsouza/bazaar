@@ -18,7 +18,7 @@ class ProductTests {
 
     @Test
     void createGeneratesTsidId() {
-        Product product = Product.create("ABCD2345", "Phone X", null, new BigDecimal("499.90"), USD, null, 1L);
+        Product product = Product.create("Phone X", null, new BigDecimal("499.90"), USD, null, 1L);
 
         assertThat(TSID.from(product.getId()).getInstant()).isCloseTo(Instant.now(), within(1, ChronoUnit.MINUTES));
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ACTIVE);
@@ -26,23 +26,16 @@ class ProductTests {
     }
 
     @Test
-    void rejectsBlankCode() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> Product.create(" ", "Phone X", null, BigDecimal.ONE, USD, null, 1L))
-                .withMessage("Product code must not be blank");
-    }
-
-    @Test
     void rejectsBlankName() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> Product.create("ABCD2345", "", null, BigDecimal.ONE, USD, null, 1L))
+                .isThrownBy(() -> Product.create("", null, BigDecimal.ONE, USD, null, 1L))
                 .withMessage("Product name must not be blank");
     }
 
     @Test
     void rejectsNegativePrice() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> Product.create("ABCD2345", "Phone X", null, new BigDecimal("-0.01"), USD, null, 1L))
+                .isThrownBy(() -> Product.create("Phone X", null, new BigDecimal("-0.01"), USD, null, 1L))
                 .withMessage("Product price must not be negative");
     }
 }

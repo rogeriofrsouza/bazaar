@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.catalog.product;
 
+import io.hypersistence.tsid.TSID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.jspecify.annotations.Nullable;
@@ -27,15 +28,16 @@ class ProductController {
 
     @GetMapping
     PagedModel<ProductResponse> list(@RequestParam(required = false) @Nullable String category,
-                                     @RequestParam(required = false) @Size(max = 20) @Nullable List<String> codes,
+                                     @RequestParam(required = false) @Size(max = 20) @Nullable List<TSID> ids,
                                      @ParameterObject @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        Page<ProductResponse> page = productService.findActive(category, codes, pageable);
+        List<Long> productIds = ids == null ? null : ids.stream().map(TSID::toLong).toList();
+        Page<ProductResponse> page = productService.findAll(category, productIds, pageable);
         return new PagedModel<>(page);
     }
 
-    @GetMapping("/{code}")
-    ProductResponse get(@PathVariable String code) {
-        return productService.findActiveByCode(code);
+    @GetMapping("/{id}")
+    ProductResponse get(@PathVariable TSID id) {
+        return productService.findById(id.toLong());
     }
 
     @PostMapping
@@ -43,8 +45,8 @@ class ProductController {
         ProductResponse product = productService.create(request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{code}")
-                .buildAndExpand(product.code())
+                .path("/{id}")
+                .buildAndExpand(product.id())
                 .toUri();
 
         return ResponseEntity.created(location).body(product);

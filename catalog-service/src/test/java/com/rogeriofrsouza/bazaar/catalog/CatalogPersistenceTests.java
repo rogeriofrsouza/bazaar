@@ -46,32 +46,33 @@ class CatalogPersistenceTests {
         ProductResponse created = productService.create(request("Phone X", "phones"));
         assertThat(TSID.isValid(created.id())).isTrue();
 
-        ProductResponse found = productService.findActiveByCode(created.code().toLowerCase());
+        Long id = TSID.from(created.id()).toLong();
+        ProductResponse found = productService.findById(id);
         assertThat(found).isEqualTo(created);
         assertThat(found.name()).isEqualTo("Phone X");
         assertThat(found.price()).isEqualByComparingTo("499.90");
         assertThat(found.currency()).isEqualTo("USD");
 
-        Product product = productRepository.findByCodeAndStatus(created.code(), ProductStatus.ACTIVE).orElseThrow();
+        Product product = productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE).orElseThrow();
         assertThat(product.getCurrency()).isEqualTo(Currency.getInstance("USD"));
         assertThat(product.getCreatedAt()).isNotNull();
         assertThat(product.getUpdatedAt()).isNotNull();
     }
 
     @Test
-    void filtersActiveProductsByCategoryAndCodes() {
+    void filtersActiveProductsByCategoryAndIds() {
         ProductResponse phone = productService.create(request("Phone Y", "phones"));
         ProductResponse laptop = productService.create(request("Laptop Z", "laptops"));
 
-        Page<ProductResponse> phones = productService.findActive("phones", null, PAGE);
-        assertThat(phones.getContent()).extracting(ProductResponse::code).contains(phone.code())
-                .doesNotContain(laptop.code());
+        Page<ProductResponse> phones = productService.findAll("phones", null, PAGE);
+        assertThat(phones.getContent()).extracting(ProductResponse::id).contains(phone.id())
+                .doesNotContain(laptop.id());
 
-        Page<ProductResponse> byCodes = productService.findActive(null, List.of(laptop.code().toLowerCase()), PAGE);
-        assertThat(byCodes.getContent()).containsExactly(laptop);
-        assertThat(byCodes.getTotalElements()).isEqualTo(1);
+        Page<ProductResponse> byIds = productService.findAll(null, List.of(TSID.from(laptop.id()).toLong()), PAGE);
+        assertThat(byIds.getContent()).containsExactly(laptop);
+        assertThat(byIds.getTotalElements()).isEqualTo(1);
 
-        assertThat(productService.findActive("unknown", null, PAGE)).isEmpty();
+        assertThat(productService.findAll("unknown", null, PAGE)).isEmpty();
     }
 
     @Test

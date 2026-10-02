@@ -2,6 +2,7 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
+import io.hypersistence.tsid.TSID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,20 +27,19 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final ProductCodeGenerator productCodeGenerator;
     private final JdbcAggregateOperations jdbcAggregateOperations;
 
     ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-                   ProductCodeGenerator productCodeGenerator, JdbcAggregateOperations jdbcAggregateOperations) {
+                   JdbcAggregateOperations jdbcAggregateOperations) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
-        this.productCodeGenerator = productCodeGenerator;
         this.jdbcAggregateOperations = jdbcAggregateOperations;
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponse> findActive(@Nullable String category, @Nullable Collection<String> codes,
-                                            Pageable pageable) {
+    public Page<ProductResponse> findAll(@Nullable String category,
+                                         @Nullable Collection<Long> ids,
+                                         Pageable pageable) {
         Long categoryId = null;
         if (category != null) {
             Optional<Category> found = categoryRepository.findBySlug(category);
@@ -49,11 +49,10 @@ public class ProductService {
             categoryId = found.get().getId();
         }
 
-        List<String> upperCodes = codes == null ? null : codes.stream().map(String::toUpperCase).toList();
         Criteria criteria = Criteria.from(Stream.of(
                         hasStatus(ProductStatus.ACTIVE),
                         inCategory(categoryId),
-                        codeIn(upperCodes))
+                        idIn(ids))
                 .filter(criterion -> !criterion.isEmpty())
                 .toList());
 
@@ -66,10 +65,11 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse findActiveByCode(String code) {
-        return productRepository.findByCodeAndStatus(code.toUpperCase(), ProductStatus.ACTIVE)
+    public ProductResponse findById(Long id) {
+        return productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE)
                 .map(ProductResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product " + code + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Product " + TSID.from(id) + " not found"));
     }
 
     @Transactional
@@ -79,7 +79,6 @@ public class ProductService {
                         HttpStatus.BAD_REQUEST, "Category " + request.category() + " not found"));
 
         Product product = Product.create(
-                productCodeGenerator.generate(),
                 request.name(),
                 request.description(),
                 request.price(),

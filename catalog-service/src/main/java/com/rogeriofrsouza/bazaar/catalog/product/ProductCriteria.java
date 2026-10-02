@@ -21,10 +21,10 @@ final class ProductCriteria {
         return Criteria.where("categoryId").is(categoryId);
     }
 
-    static Criteria codeIn(@Nullable Collection<String> codes) {
-        if (codes == null || codes.isEmpty()) {
+    static Criteria idIn(@Nullable Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
             return Criteria.empty();
         }
-        return Criteria.where("code").in(codes);
+        return Criteria.where("id").in(ids);
     }
 }
