@@ -1,6 +1,6 @@
 CREATE TABLE product
 (
-    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id          bigint         PRIMARY KEY,
     code        varchar(8)     NOT NULL UNIQUE,
     name        varchar(200)   NOT NULL,
     description text,
@@ -9,6 +9,7 @@ CREATE TABLE product
     image_url   varchar(255),
     status      varchar(20)    NOT NULL,
     category_id bigint         NOT NULL REFERENCES category (id),
+    version     bigint         NOT NULL,
     created_at  timestamptz    NOT NULL DEFAULT now(),
     updated_at  timestamptz    NOT NULL DEFAULT now()
 );

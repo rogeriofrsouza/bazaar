@@ -44,6 +44,7 @@ class CatalogPersistenceTests {
     @Test
     void createsAndReadsProduct() {
         ProductResponse created = productService.create(request("Phone X", "phones"));
+        assertThat(TSID.isValid(created.id())).isTrue();
 
         ProductResponse found = productService.findActiveByCode(created.code().toLowerCase());
         assertThat(found).isEqualTo(created);

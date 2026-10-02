@@ -4,31 +4,37 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
 
+import io.hypersistence.tsid.TSID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.util.Assert;
 
 public class Product {
 
     @Id
-    private @Nullable Long id;
+    private final Long id;
 
-    private String code;
+    private final String code;
 
-    private String name;
+    private final String name;
 
-    private @Nullable String description;
+    private final @Nullable String description;
 
-    private BigDecimal price;
+    private final BigDecimal price;
 
-    private Currency currency;
+    private final Currency currency;
 
-    private @Nullable String imageUrl;
+    private final @Nullable String imageUrl;
 
-    private ProductStatus status;
+    private final ProductStatus status;
 
-    private Long categoryId;
+    private final Long categoryId;
+
+    @Version
+    private @Nullable Long version;
 
     @CreatedDate
     private @Nullable Instant createdAt;
@@ -36,19 +42,23 @@ public class Product {
     @LastModifiedDate
     private @Nullable Instant updatedAt;
 
-    protected Product() {
-    }
-
-    private Product(
-        String code,
-        String name,
-        @Nullable String description,
-        BigDecimal price,
-        Currency currency,
-        @Nullable String imageUrl,
-        ProductStatus status,
-        Long categoryId
+    public Product(
+            Long id,
+            String code,
+            String name,
+            @Nullable String description,
+            BigDecimal price,
+            Currency currency,
+            @Nullable String imageUrl,
+            ProductStatus status,
+            Long categoryId,
+            @Nullable Instant createdAt,
+            @Nullable Instant updatedAt
     ) {
+        Assert.hasText(code, "Product code must not be blank");
+        Assert.hasText(name, "Product name must not be blank");
+        Assert.isTrue(price.signum() >= 0, "Product price must not be negative");
+        this.id = id;
         this.code = code;
         this.name = name;
         this.description = description;
@@ -57,21 +67,25 @@ public class Product {
         this.imageUrl = imageUrl;
         this.status = status;
         this.categoryId = categoryId;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public static Product create(
-        String code,
-        String name,
-        @Nullable String description,
-        BigDecimal price,
-        Currency currency,
-        @Nullable String imageUrl,
-        Long categoryId
+            String code,
+            String name,
+            @Nullable String description,
+            BigDecimal price,
+            Currency currency,
+            @Nullable String imageUrl,
+            Long categoryId
     ) {
-        return new Product(code, name, description, price, currency, imageUrl, ProductStatus.ACTIVE, categoryId);
+        return new Product(
+                TSID.Factory.getTsid().toLong(), code, name, description, price, currency, imageUrl,
+                ProductStatus.ACTIVE, categoryId, null, null);
     }
 
-    public @Nullable Long getId() {
+    public Long getId() {
         return id;
     }
 
