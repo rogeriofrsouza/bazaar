@@ -9,10 +9,10 @@ final class InventoryItemSpecifications {
     private InventoryItemSpecifications() {
     }
 
-    static Specification<InventoryItem> productCodeIn(Collection<String> codes) {
-        if (codes == null || codes.isEmpty()) {
+    static Specification<InventoryItem> productIdIn(Collection<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
             return Specification.unrestricted();
         }
-        return (root, _, _) -> root.get("productCode").in(codes);
+        return (root, _, _) -> root.get("productId").in(productIds);
     }
 }

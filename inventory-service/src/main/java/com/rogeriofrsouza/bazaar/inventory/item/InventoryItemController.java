@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
+import io.hypersistence.tsid.TSID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.springdoc.core.annotations.ParameterObject;
@@ -7,8 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -24,51 +27,57 @@ class InventoryItemController {
         this.inventoryItemService = inventoryItemService;
     }
 
-    @GetMapping("/{code}")
-    InventoryItemResponse get(@PathVariable String code) {
-        return inventoryItemService.findByProductCode(code);
+    @GetMapping("/{productId}")
+    InventoryItemResponse get(@PathVariable TSID productId) {
+        return inventoryItemService.findByProductId(productId.toLong());
     }
 
     @GetMapping
-    PagedModel<InventoryItemResponse> list(@RequestParam(required = false) @Size(max = 20) List<String> codes,
-                                           @ParameterObject @PageableDefault(size = 20, sort = "productCode") Pageable pageable) {
-        Page<InventoryItemResponse> page = inventoryItemService.findAll(codes, pageable);
+    PagedModel<InventoryItemResponse> list(@RequestParam(required = false) @Size(max = 20) List<TSID> productIds,
+                                           @ParameterObject @PageableDefault(size = 20, sort = "productId") Pageable pageable) {
+        List<Long> ids = productIds == null ? null : productIds.stream().map(TSID::toLong).toList();
+        Page<InventoryItemResponse> page = inventoryItemService.findAll(ids, pageable);
         return new PagedModel<>(page);
     }
 
     @PostMapping
     ResponseEntity<InventoryItemResponse> create(@Valid @RequestBody CreateInventoryItemRequest request) {
-        InventoryItemResponse item = inventoryItemService.create(request);
+        if (!TSID.isValid(request.productId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product id " + request.productId());
+        }
+
+        Long productId = TSID.from(request.productId()).toLong();
+        InventoryItemResponse item = inventoryItemService.create(productId, request.quantityOnHand());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{code}")
-                .buildAndExpand(item.productCode())
+                .path("/{productId}")
+                .buildAndExpand(item.productId())
                 .toUri();
 
         return ResponseEntity.created(location).body(item);
     }
 
-    @PostMapping("/{code}/restock")
-    InventoryItemResponse restock(@PathVariable String code,
+    @PostMapping("/{productId}/restock")
+    InventoryItemResponse restock(@PathVariable TSID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.restock(code, request.quantity());
+        return inventoryItemService.restock(productId.toLong(), request.quantity());
     }
 
-    @PostMapping("/{code}/reserve")
-    InventoryItemResponse reserve(@PathVariable String code,
+    @PostMapping("/{productId}/reserve")
+    InventoryItemResponse reserve(@PathVariable TSID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.reserve(code, request.quantity());
+        return inventoryItemService.reserve(productId.toLong(), request.quantity());
     }
 
-    @PostMapping("/{code}/release")
-    InventoryItemResponse release(@PathVariable String code,
+    @PostMapping("/{productId}/release")
+    InventoryItemResponse release(@PathVariable TSID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.release(code, request.quantity());
+        return inventoryItemService.release(productId.toLong(), request.quantity());
     }
 
-    @PostMapping("/{code}/fulfil")
-    InventoryItemResponse fulfil(@PathVariable String code,
+    @PostMapping("/{productId}/fulfil")
+    InventoryItemResponse fulfil(@PathVariable TSID productId,
                                  @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.fulfil(code, request.quantity());
+        return inventoryItemService.fulfil(productId.toLong(), request.quantity());
     }
 }

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 public record CreateInventoryItemRequest(
         @NotBlank
-        String productCode,
+        String productId,
 
         @NotNull
         @PositiveOrZero

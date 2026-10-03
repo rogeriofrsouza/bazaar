@@ -10,10 +10,10 @@ import java.util.Optional;
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long>,
         JpaSpecificationExecutor<InventoryItem> {
 
-    Optional<InventoryItem> findByProductCode(String productCode);
+    Optional<InventoryItem> findByProductId(Long productId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<InventoryItem> findWithLockByProductCode(String productCode);
+    Optional<InventoryItem> findWithLockByProductId(Long productId);
 
-    boolean existsByProductCode(String productCode);
+    boolean existsByProductId(Long productId);
 }
