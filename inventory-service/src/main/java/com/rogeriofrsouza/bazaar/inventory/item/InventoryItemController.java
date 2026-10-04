@@ -8,10 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -42,11 +40,7 @@ class InventoryItemController {
 
     @PostMapping
     ResponseEntity<InventoryItemResponse> create(@Valid @RequestBody CreateInventoryItemRequest request) {
-        if (!TSID.isValid(request.productId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product id " + request.productId());
-        }
-
-        Long productId = TSID.from(request.productId()).toLong();
+        Long productId = request.productId().toLong();
         InventoryItemResponse item = inventoryItemService.create(productId, request.quantityOnHand());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
