@@ -4,6 +4,7 @@ import com.rogeriofrsouza.bazaar.order.ContainersConfig;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
 import com.rogeriofrsouza.bazaar.order.order.OrderResponse.OrderItemResponse;
+import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,14 +38,16 @@ class OrderServiceTests {
 
     @Test
     void placesOrderWithCatalogPrices() {
+        TSID keyboard = TSID.Factory.getTsid();
+        TSID mouse = TSID.Factory.getTsid();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
-                new CatalogProduct("AAAA2222", "Keyboard", new BigDecimal("150.00"), BRL),
-                new CatalogProduct("BBBB3333", "Mouse", new BigDecimal("49.90"), BRL)
+                new CatalogProduct(keyboard, "Keyboard", new BigDecimal("150.00"), BRL),
+                new CatalogProduct(mouse, "Mouse", new BigDecimal("49.90"), BRL)
         ));
 
         OrderResponse placed = orderService.place(new CreateOrderRequest(List.of(
-                new OrderItemRequest("AAAA2222", 2),
-                new OrderItemRequest("BBBB3333", 1)
+                new OrderItemRequest(keyboard, 2),
+                new OrderItemRequest(mouse, 1)
         )));
 
         OrderResponse order = orderService.findByNumber(placed.number());
@@ -53,23 +56,26 @@ class OrderServiceTests {
         assertThat(order.currency()).isEqualTo("BRL");
         assertThat(order.total()).isEqualByComparingTo("349.90");
         assertThat(order.items())
-                .extracting(OrderItemResponse::productName, OrderItemResponse::unitPrice, OrderItemResponse::quantity)
+                .extracting(OrderItemResponse::productId, OrderItemResponse::productName,
+                        OrderItemResponse::unitPrice, OrderItemResponse::quantity)
                 .containsExactlyInAnyOrder(
-                        tuple("Keyboard", new BigDecimal("150.00"), 2),
-                        tuple("Mouse", new BigDecimal("49.90"), 1)
+                        tuple(keyboard.toString(), "Keyboard", new BigDecimal("150.00"), 2),
+                        tuple(mouse.toString(), "Mouse", new BigDecimal("49.90"), 1)
                 );
     }
 
     @Test
     void rejectsMixedCurrencies() {
+        TSID monitor = TSID.Factory.getTsid();
+        TSID cable = TSID.Factory.getTsid();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
-                new CatalogProduct("CCCC4444", "Monitor", new BigDecimal("900.00"), BRL),
-                new CatalogProduct("DDDD5555", "Cable", new BigDecimal("9.99"), USD)
+                new CatalogProduct(monitor, "Monitor", new BigDecimal("900.00"), BRL),
+                new CatalogProduct(cable, "Cable", new BigDecimal("9.99"), USD)
         ));
 
         CreateOrderRequest request = new CreateOrderRequest(List.of(
-                new OrderItemRequest("CCCC4444", 1),
-                new OrderItemRequest("DDDD5555", 1)
+                new OrderItemRequest(monitor, 1),
+                new OrderItemRequest(cable, 1)
         ));
 
         assertThatThrownBy(() -> orderService.place(request))
@@ -79,19 +85,21 @@ class OrderServiceTests {
 
     @Test
     void rejectsUnknownProducts() {
+        TSID headset = TSID.Factory.getTsid();
+        TSID unknown = TSID.Factory.getTsid();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
-                new CatalogProduct("EEEE6666", "Headset", new BigDecimal("199.00"), BRL)
+                new CatalogProduct(headset, "Headset", new BigDecimal("199.00"), BRL)
         ));
 
         CreateOrderRequest request = new CreateOrderRequest(List.of(
-                new OrderItemRequest("EEEE6666", 1),
-                new OrderItemRequest("FFFF7777", 1)
+                new OrderItemRequest(headset, 1),
+                new OrderItemRequest(unknown, 1)
         ));
 
         assertThatThrownBy(() -> orderService.place(request))
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(ex.getReason()).contains("FFFF7777");
+                    assertThat(ex.getReason()).contains(unknown.toString());
                 });
     }
 

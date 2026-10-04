@@ -2,6 +2,7 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
+import io.hypersistence.tsid.TSID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,19 +38,20 @@ public class OrderService {
 
     @Transactional
     public OrderResponse place(CreateOrderRequest request) {
-        Set<String> codes = request.items()
+        Set<TSID> productIds = request.items()
                 .stream()
-                .map(item -> item.productCode().toUpperCase())
+                .map(OrderItemRequest::productId)
                 .collect(Collectors.toSet());
 
-        Map<String, CatalogProduct> products = catalogClient.getProducts(codes)
+        Map<TSID, CatalogProduct> products = catalogClient.getProducts(productIds)
                 .stream()
-                .collect(Collectors.toMap(CatalogProduct::code, Function.identity()));
+                .collect(Collectors.toMap(CatalogProduct::id, Function.identity()));
 
-        if (products.size() < codes.size()) {
-            List<String> missing = codes.stream()
-                    .filter(code -> !products.containsKey(code))
+        if (products.size() < productIds.size()) {
+            List<String> missing = productIds.stream()
+                    .filter(id -> !products.containsKey(id))
                     .sorted()
+                    .map(TSID::toString)
                     .toList();
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Products not found: " + String.join(", ", missing));
         }
@@ -65,8 +67,8 @@ public class OrderService {
         List<OrderItem> items = request.items()
                 .stream()
                 .map(item -> {
-                    CatalogProduct product = products.get(item.productCode().toUpperCase());
-                    return OrderItem.create(product.code(), product.name(), product.price(), item.quantity());
+                    CatalogProduct product = products.get(item.productId());
+                    return OrderItem.create(product.id().toLong(), product.name(), product.price(), item.quantity());
                 })
                 .toList();
 

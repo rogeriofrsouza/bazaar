@@ -1,6 +1,7 @@
 package com.rogeriofrsouza.bazaar.order.catalog;
 
 import com.rogeriofrsouza.bazaar.order.PagedResponse;
+import io.hypersistence.tsid.TSID;
 import org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -23,11 +24,11 @@ public class CatalogClient {
                 .build();
     }
 
-    public List<CatalogProduct> getProducts(Collection<String> codes) {
+    public List<CatalogProduct> getProducts(Collection<TSID> ids) {
         PagedResponse<CatalogProduct> page = restClient.get()
                 .uri(builder -> builder.path("/api/products")
-                        .queryParam("codes", codes)
-                        .queryParam("size", codes.size())
+                        .queryParam("ids", ids)
+                        .queryParam("size", ids.size())
                         .build())
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});

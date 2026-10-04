@@ -13,7 +13,7 @@ CREATE TABLE order_item
 (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id     bigint         NOT NULL REFERENCES orders (id),
-    product_code varchar(8)     NOT NULL,
+    product_id   bigint         NOT NULL,
     product_name varchar(200)   NOT NULL,
     unit_price   numeric(12, 2) NOT NULL,
     quantity     integer        NOT NULL

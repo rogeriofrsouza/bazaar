@@ -1,5 +1,7 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import io.hypersistence.tsid.TSID;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -29,7 +31,7 @@ public record OrderResponse(
     }
 
     public record OrderItemResponse(
-            String productCode,
+            String productId,
             String productName,
             BigDecimal unitPrice,
             int quantity,
@@ -37,7 +39,7 @@ public record OrderResponse(
     ) {
         public static OrderItemResponse from(OrderItem item) {
             return new OrderItemResponse(
-                    item.getProductCode(),
+                    TSID.from(item.getProductId()).toString(),
                     item.getProductName(),
                     item.getUnitPrice(),
                     item.getQuantity(),

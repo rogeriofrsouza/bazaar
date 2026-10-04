@@ -14,8 +14,8 @@ public class OrderItem {
     @ManyToOne(fetch = FetchType.LAZY)
     private Order order;
 
-    @Column(nullable = false, length = 8)
-    private String productCode;
+    @Column(nullable = false)
+    private Long productId;
 
     @Column(nullable = false, length = 200)
     private String productName;
@@ -29,18 +29,18 @@ public class OrderItem {
     protected OrderItem() {
     }
 
-    private OrderItem(String productCode, String productName, BigDecimal unitPrice, int quantity) {
-        this.productCode = productCode;
+    private OrderItem(Long productId, String productName, BigDecimal unitPrice, int quantity) {
+        this.productId = productId;
         this.productName = productName;
         this.unitPrice = unitPrice;
         this.quantity = quantity;
     }
 
-    public static OrderItem create(String productCode, String productName, BigDecimal unitPrice, int quantity) {
+    public static OrderItem create(Long productId, String productName, BigDecimal unitPrice, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
-        return new OrderItem(productCode, productName, unitPrice, quantity);
+        return new OrderItem(productId, productName, unitPrice, quantity);
     }
 
     void assignTo(Order order) {
@@ -55,8 +55,8 @@ public class OrderItem {
         return order;
     }
 
-    public String getProductCode() {
-        return productCode;
+    public Long getProductId() {
+        return productId;
     }
 
     public String getProductName() {
