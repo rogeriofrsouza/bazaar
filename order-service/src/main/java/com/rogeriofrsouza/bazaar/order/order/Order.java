@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import io.hypersistence.tsid.TSID;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -15,11 +16,7 @@ import java.util.List;
 public class Order {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true, length = 8)
-    private String number;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -34,6 +31,9 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
+    @Version
+    private Long version;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -45,19 +45,19 @@ public class Order {
     protected Order() {
     }
 
-    private Order(String number, Currency currency) {
-        this.number = number;
+    private Order(Long id, Currency currency) {
+        this.id = id;
         this.currency = currency;
         this.status = OrderStatus.PENDING;
         this.total = BigDecimal.ZERO;
     }
 
-    public static Order place(String number, Currency currency, List<OrderItem> items) {
+    public static Order place(Currency currency, List<OrderItem> items) {
         if (items.isEmpty()) {
             throw new IllegalArgumentException("An order needs at least one item");
         }
 
-        Order order = new Order(number, currency);
+        Order order = new Order(TSID.Factory.getTsid().toLong(), currency);
         items.forEach(order::addItem);
         return order;
     }
@@ -70,10 +70,6 @@ public class Order {
 
     public Long getId() {
         return id;
-    }
-
-    public String getNumber() {
-        return number;
     }
 
     public OrderStatus getStatus() {

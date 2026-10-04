@@ -10,9 +10,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("""
             select o from Order o
                 left join fetch o.items
-            where o.number = :number
+            where o.id = :id
             """)
-    Optional<Order> findByNumber(String number);
-
-    boolean existsByNumber(String number);
+    Optional<Order> findWithItemsById(Long id);
 }

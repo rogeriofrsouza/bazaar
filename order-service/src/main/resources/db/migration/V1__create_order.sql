@@ -1,17 +1,17 @@
 CREATE TABLE orders
 (
-    id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    number     varchar(8)     NOT NULL UNIQUE,
+    id         bigint PRIMARY KEY,
     status     varchar(20)    NOT NULL,
     currency   varchar(3)     NOT NULL,
     total      numeric(12, 2) NOT NULL,
+    version    bigint         NOT NULL,
     created_at timestamptz    NOT NULL DEFAULT NOW(),
     updated_at timestamptz    NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE order_item
 (
-    id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id           bigint PRIMARY KEY,
     order_id     bigint         NOT NULL REFERENCES orders (id),
     product_id   bigint         NOT NULL,
     product_name varchar(200)   NOT NULL,

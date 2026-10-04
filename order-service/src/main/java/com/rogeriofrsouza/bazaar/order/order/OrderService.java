@@ -19,21 +19,19 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final OrderNumberGenerator orderNumberGenerator;
     private final CatalogClient catalogClient;
 
-    OrderService(OrderRepository orderRepository, OrderNumberGenerator orderNumberGenerator,
-                 CatalogClient catalogClient) {
+    OrderService(OrderRepository orderRepository, CatalogClient catalogClient) {
         this.orderRepository = orderRepository;
-        this.orderNumberGenerator = orderNumberGenerator;
         this.catalogClient = catalogClient;
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse findByNumber(String number) {
-        return orderRepository.findByNumber(number.toUpperCase())
+    public OrderResponse findById(Long id) {
+        return orderRepository.findWithItemsById(id)
                 .map(OrderResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + number + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Order " + TSID.from(id) + " not found"));
     }
 
     @Transactional
@@ -72,7 +70,7 @@ public class OrderService {
                 })
                 .toList();
 
-        Order order = Order.place(orderNumberGenerator.generate(), currencies.iterator().next(), items);
+        Order order = Order.place(currencies.iterator().next(), items);
         return OrderResponse.from(orderRepository.save(order));
     }
 }

@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.List;
 
 public record OrderResponse(
-        String number,
+        String id,
         OrderStatus status,
         String currency,
         BigDecimal total,
@@ -21,7 +21,7 @@ public record OrderResponse(
                 .toList();
 
         return new OrderResponse(
-                order.getNumber(),
+                TSID.from(order.getId()).toString(),
                 order.getStatus(),
                 order.getCurrency().getCurrencyCode(),
                 order.getTotal(),

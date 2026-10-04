@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import io.hypersistence.tsid.TSID;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +18,9 @@ class OrderController {
         this.orderService = orderService;
     }
 
-    @GetMapping("/{number}")
-    OrderResponse get(@PathVariable String number) {
-        return orderService.findByNumber(number);
+    @GetMapping("/{id}")
+    OrderResponse get(@PathVariable TSID id) {
+        return orderService.findById(id.toLong());
     }
 
     @PostMapping
@@ -27,8 +28,8 @@ class OrderController {
         OrderResponse order = orderService.place(request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{number}")
-                .buildAndExpand(order.number())
+                .path("/{id}")
+                .buildAndExpand(order.id())
                 .toUri();
 
         return ResponseEntity.created(location).body(order);

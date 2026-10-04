@@ -50,7 +50,7 @@ class OrderServiceTests {
                 new OrderItemRequest(mouse, 1)
         )));
 
-        OrderResponse order = orderService.findByNumber(placed.number());
+        OrderResponse order = orderService.findById(TSID.from(placed.id()).toLong());
 
         assertThat(order.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.currency()).isEqualTo("BRL");
@@ -105,7 +105,7 @@ class OrderServiceTests {
 
     @Test
     void failsWhenOrderDoesNotExist() {
-        assertThatThrownBy(() -> orderService.findByNumber("ZZZZ9999"))
+        assertThatThrownBy(() -> orderService.findById(TSID.Factory.getTsid().toLong()))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }

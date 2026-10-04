@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import io.hypersistence.tsid.TSID;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -8,7 +9,6 @@ import java.math.BigDecimal;
 public class OrderItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -29,7 +29,8 @@ public class OrderItem {
     protected OrderItem() {
     }
 
-    private OrderItem(Long productId, String productName, BigDecimal unitPrice, int quantity) {
+    private OrderItem(Long id, Long productId, String productName, BigDecimal unitPrice, int quantity) {
+        this.id = id;
         this.productId = productId;
         this.productName = productName;
         this.unitPrice = unitPrice;
@@ -40,7 +41,7 @@ public class OrderItem {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
-        return new OrderItem(productId, productName, unitPrice, quantity);
+        return new OrderItem(TSID.Factory.getTsid().toLong(), productId, productName, unitPrice, quantity);
     }
 
     void assignTo(Order order) {
