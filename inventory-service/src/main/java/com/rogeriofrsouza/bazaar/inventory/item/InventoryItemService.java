@@ -38,13 +38,15 @@ public class InventoryItemService {
     }
 
     @Transactional
-    public InventoryItemResponse create(Long productId, int quantityOnHand) {
+    public InventoryItemResponse create(CreateInventoryItemRequest request) {
+        Long productId = request.productId().toLong();
+
         if (inventoryItemRepository.existsByProductId(productId)) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Inventory item " + TSID.from(productId) + " already exists");
+                    HttpStatus.CONFLICT, "Inventory item " + request.productId() + " already exists");
         }
 
-        InventoryItem item = InventoryItem.create(productId, quantityOnHand);
+        InventoryItem item = InventoryItem.create(productId, request.quantityOnHand());
         return InventoryItemResponse.from(inventoryItemRepository.save(item));
     }
 

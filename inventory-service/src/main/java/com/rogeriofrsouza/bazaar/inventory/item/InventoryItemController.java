@@ -40,8 +40,7 @@ class InventoryItemController {
 
     @PostMapping
     ResponseEntity<InventoryItemResponse> create(@Valid @RequestBody CreateInventoryItemRequest request) {
-        Long productId = request.productId().toLong();
-        InventoryItemResponse item = inventoryItemService.create(productId, request.quantityOnHand());
+        InventoryItemResponse item = inventoryItemService.create(request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{productId}")
