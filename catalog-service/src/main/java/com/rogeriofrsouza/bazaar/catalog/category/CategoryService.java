@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,7 +22,7 @@ public class CategoryService {
     public List<CategoryResponse> list() {
         List<Category> categories = categoryRepository.findAll(Sort.by("name"));
 
-        Map<Long, List<Category>> childrenByParent = categories.stream()
+        Map<UUID, List<Category>> childrenByParent = categories.stream()
                 .filter(category -> category.getParentId() != null)
                 .collect(Collectors.groupingBy(Category::getParentId));
 

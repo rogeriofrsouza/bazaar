@@ -1,22 +1,23 @@
 package com.rogeriofrsouza.bazaar.catalog.category;
 
-import io.hypersistence.tsid.TSID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.util.Assert;
 
+import java.util.UUID;
+
 public class Category {
 
     @Id
-    private final Long id;
+    private final UUID id;
 
     private final String slug;
 
     private final String name;
 
-    private final @Nullable Long parentId;
+    private final @Nullable UUID parentId;
 
-    public Category(Long id, String slug, String name, @Nullable Long parentId) {
+    public Category(UUID id, String slug, String name, @Nullable UUID parentId) {
         Assert.hasText(slug, "Category slug must not be blank");
         Assert.hasText(name, "Category name must not be blank");
         this.id = id;
@@ -25,11 +26,11 @@ public class Category {
         this.parentId = parentId;
     }
 
-    public static Category create(String slug, String name, @Nullable Long parentId) {
-        return new Category(TSID.Factory.getTsid().toLong(), slug, name, parentId);
+    public static Category create(String slug, String name, @Nullable UUID parentId) {
+        return new Category(UUID.ofEpochMillis(System.currentTimeMillis()), slug, name, parentId);
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -41,7 +42,7 @@ public class Category {
         return name;
     }
 
-    public @Nullable Long getParentId() {
+    public @Nullable UUID getParentId() {
         return parentId;
     }
 

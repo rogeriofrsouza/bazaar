@@ -2,7 +2,6 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
-import io.hypersistence.tsid.TSID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static com.rogeriofrsouza.bazaar.catalog.product.ProductCriteria.*;
@@ -38,9 +38,9 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> findAll(@Nullable String category,
-                                         @Nullable Collection<Long> ids,
+                                         @Nullable Collection<UUID> ids,
                                          Pageable pageable) {
-        Long categoryId = null;
+        UUID categoryId = null;
         if (category != null) {
             Optional<Category> found = categoryRepository.findBySlug(category);
             if (found.isEmpty()) {
@@ -65,11 +65,11 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse findById(Long id) {
+    public ProductResponse findById(UUID id) {
         return productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE)
                 .map(ProductResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Product " + TSID.from(id) + " not found"));
+                        HttpStatus.NOT_FOUND, "Product " + id + " not found"));
     }
 
     @Transactional

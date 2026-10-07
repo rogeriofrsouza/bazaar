@@ -8,7 +8,6 @@ import com.rogeriofrsouza.bazaar.catalog.product.ProductRepository;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductResponse;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductService;
 import com.rogeriofrsouza.bazaar.catalog.product.ProductStatus;
-import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.Currency;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,9 +44,9 @@ class CatalogPersistenceTests {
     @Test
     void createsAndReadsProduct() {
         ProductResponse created = productService.create(request("Phone X", "phones"));
-        assertThat(TSID.isValid(created.id())).isTrue();
+        UUID id = created.id();
+        assertThat(id.version()).isEqualTo(7);
 
-        Long id = TSID.from(created.id()).toLong();
         ProductResponse found = productService.findById(id);
         assertThat(found).isEqualTo(created);
         assertThat(found.name()).isEqualTo("Phone X");
@@ -68,7 +68,7 @@ class CatalogPersistenceTests {
         assertThat(phones.getContent()).extracting(ProductResponse::id).contains(phone.id())
                 .doesNotContain(laptop.id());
 
-        Page<ProductResponse> byIds = productService.findAll(null, List.of(TSID.from(laptop.id()).toLong()), PAGE);
+        Page<ProductResponse> byIds = productService.findAll(null, List.of(laptop.id()), PAGE);
         assertThat(byIds.getContent()).containsExactly(laptop);
         assertThat(byIds.getTotalElements()).isEqualTo(1);
 
@@ -89,8 +89,8 @@ class CatalogPersistenceTests {
                 .containsExactlyInAnyOrder("cameras", "headphones", "phones", "smartwatches", "tablets", "tvs");
         assertThat(electronics.children()).allSatisfy(child -> assertThat(child.children()).isNull());
         assertThat(roots).allSatisfy(root -> {
-            assertThat(TSID.isValid(root.id())).isTrue();
-            assertThat(root.children()).allSatisfy(child -> assertThat(TSID.isValid(child.id())).isTrue());
+            assertThat(root.id().version()).isEqualTo(7);
+            assertThat(root.children()).allSatisfy(child -> assertThat(child.id().version()).isEqualTo(7));
         });
     }
 

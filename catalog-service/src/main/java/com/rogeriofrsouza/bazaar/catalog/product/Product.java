@@ -3,8 +3,8 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
+import java.util.UUID;
 
-import io.hypersistence.tsid.TSID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -15,7 +15,7 @@ import org.springframework.util.Assert;
 public class Product {
 
     @Id
-    private final Long id;
+    private final UUID id;
 
     private final String name;
 
@@ -29,7 +29,7 @@ public class Product {
 
     private final ProductStatus status;
 
-    private final Long categoryId;
+    private final UUID categoryId;
 
     @Version
     private @Nullable Long version;
@@ -41,14 +41,14 @@ public class Product {
     private @Nullable Instant updatedAt;
 
     public Product(
-            Long id,
+            UUID id,
             String name,
             @Nullable String description,
             BigDecimal price,
             Currency currency,
             @Nullable String imageUrl,
             ProductStatus status,
-            Long categoryId,
+            UUID categoryId,
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
@@ -72,14 +72,14 @@ public class Product {
             BigDecimal price,
             Currency currency,
             @Nullable String imageUrl,
-            Long categoryId
+            UUID categoryId
     ) {
         return new Product(
-                TSID.Factory.getTsid().toLong(), name, description, price, currency, imageUrl,
+                UUID.ofEpochMillis(System.currentTimeMillis()), name, description, price, currency, imageUrl,
                 ProductStatus.ACTIVE, categoryId, null, null);
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -107,7 +107,7 @@ public class Product {
         return status;
     }
 
-    public Long getCategoryId() {
+    public UUID getCategoryId() {
         return categoryId;
     }
 
