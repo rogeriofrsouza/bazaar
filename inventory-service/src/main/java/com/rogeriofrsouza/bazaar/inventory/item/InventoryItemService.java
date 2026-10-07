@@ -1,6 +1,5 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import io.hypersistence.tsid.TSID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -10,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
+import java.util.UUID;
 
 import static com.rogeriofrsouza.bazaar.inventory.item.InventoryItemSpecifications.productIdIn;
 
@@ -23,14 +23,14 @@ public class InventoryItemService {
     }
 
     @Transactional(readOnly = true)
-    public InventoryItemResponse findByProductId(Long productId) {
+    public InventoryItemResponse findByProductId(UUID productId) {
         return inventoryItemRepository.findByProductId(productId)
                 .map(InventoryItemResponse::from)
                 .orElseThrow(() -> notFound(productId));
     }
 
     @Transactional(readOnly = true)
-    public Page<InventoryItemResponse> findAll(Collection<Long> productIds, Pageable pageable) {
+    public Page<InventoryItemResponse> findAll(Collection<UUID> productIds, Pageable pageable) {
         Specification<InventoryItem> specification = productIdIn(productIds);
 
         return inventoryItemRepository.findAll(specification, pageable)
@@ -39,7 +39,7 @@ public class InventoryItemService {
 
     @Transactional
     public InventoryItemResponse create(CreateInventoryItemRequest request) {
-        Long productId = request.productId().toLong();
+        UUID productId = request.productId();
 
         if (inventoryItemRepository.existsByProductId(productId)) {
             throw new ResponseStatusException(
@@ -51,40 +51,40 @@ public class InventoryItemService {
     }
 
     @Transactional
-    public InventoryItemResponse restock(Long productId, int quantity) {
+    public InventoryItemResponse restock(UUID productId, int quantity) {
         InventoryItem item = findForUpdate(productId);
         item.restock(quantity);
         return InventoryItemResponse.from(item);
     }
 
     @Transactional
-    public InventoryItemResponse reserve(Long productId, int quantity) {
+    public InventoryItemResponse reserve(UUID productId, int quantity) {
         InventoryItem item = findForUpdate(productId);
         item.reserve(quantity);
         return InventoryItemResponse.from(item);
     }
 
     @Transactional
-    public InventoryItemResponse release(Long productId, int quantity) {
+    public InventoryItemResponse release(UUID productId, int quantity) {
         InventoryItem item = findForUpdate(productId);
         item.release(quantity);
         return InventoryItemResponse.from(item);
     }
 
     @Transactional
-    public InventoryItemResponse fulfil(Long productId, int quantity) {
+    public InventoryItemResponse fulfil(UUID productId, int quantity) {
         InventoryItem item = findForUpdate(productId);
         item.fulfil(quantity);
         return InventoryItemResponse.from(item);
     }
 
-    private InventoryItem findForUpdate(Long productId) {
+    private InventoryItem findForUpdate(UUID productId) {
         return inventoryItemRepository.findWithLockByProductId(productId)
                 .orElseThrow(() -> notFound(productId));
     }
 
-    private static ResponseStatusException notFound(Long productId) {
+    private static ResponseStatusException notFound(UUID productId) {
         return new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Inventory item " + TSID.from(productId) + " not found");
+                HttpStatus.NOT_FOUND, "Inventory item " + productId + " not found");
     }
 }

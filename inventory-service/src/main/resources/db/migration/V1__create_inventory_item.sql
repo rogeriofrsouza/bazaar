@@ -1,9 +1,10 @@
 CREATE TABLE inventory_item
 (
-    id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    product_id        bigint      NOT NULL UNIQUE,
+    id                uuid PRIMARY KEY,
+    product_id        uuid        NOT NULL UNIQUE,
     quantity_on_hand  integer     NOT NULL,
     quantity_reserved integer     NOT NULL DEFAULT 0,
+    version           bigint      NOT NULL,
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now()
 );

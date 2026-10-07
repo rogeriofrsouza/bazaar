@@ -1,12 +1,13 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import io.hypersistence.tsid.TSID;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
+import java.util.UUID;
+
 public record CreateInventoryItemRequest(
         @NotNull
-        TSID productId,
+        UUID productId,
 
         @NotNull
         @PositiveOrZero

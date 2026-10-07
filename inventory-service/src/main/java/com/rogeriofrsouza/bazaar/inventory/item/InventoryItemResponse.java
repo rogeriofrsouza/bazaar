@@ -1,16 +1,16 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import io.hypersistence.tsid.TSID;
+import java.util.UUID;
 
 public record InventoryItemResponse(
-    String productId,
+    UUID productId,
     int quantityOnHand,
     int quantityReserved,
     int available
 ) {
     public static InventoryItemResponse from(InventoryItem item) {
         return new InventoryItemResponse(
-            TSID.from(item.getProductId()).toString(),
+            item.getProductId(),
             item.getQuantityOnHand(),
             item.getQuantityReserved(),
             item.getAvailable()

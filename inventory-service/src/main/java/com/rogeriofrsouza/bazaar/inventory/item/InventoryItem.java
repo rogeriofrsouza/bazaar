@@ -1,27 +1,29 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import io.hypersistence.tsid.TSID;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 public class InventoryItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(nullable = false, unique = true)
-    private Long productId;
+    private UUID productId;
 
     @Column(nullable = false)
     private int quantityOnHand;
 
     @Column(nullable = false)
     private int quantityReserved;
+
+    @Version
+    private Long version;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -34,17 +36,18 @@ public class InventoryItem {
     protected InventoryItem() {
     }
 
-    private InventoryItem(Long productId, int quantityOnHand) {
+    private InventoryItem(UUID id, UUID productId, int quantityOnHand) {
+        this.id = id;
         this.productId = productId;
         this.quantityOnHand = quantityOnHand;
         this.quantityReserved = 0;
     }
 
-    public static InventoryItem create(Long productId, int quantityOnHand) {
+    public static InventoryItem create(UUID productId, int quantityOnHand) {
         if (quantityOnHand < 0) {
             throw new IllegalArgumentException("Quantity on hand must not be negative");
         }
-        return new InventoryItem(productId, quantityOnHand);
+        return new InventoryItem(UUID.ofEpochMillis(System.currentTimeMillis()), productId, quantityOnHand);
     }
 
     public void restock(int quantity) {
@@ -56,7 +59,7 @@ public class InventoryItem {
         requirePositive(quantity);
         if (quantity > getAvailable()) {
             throw new InsufficientStockException(
-                    "Only " + getAvailable() + " units of " + TSID.from(productId) + " available");
+                    "Only " + getAvailable() + " units of " + productId + " available");
         }
         quantityReserved += quantity;
     }
@@ -65,7 +68,7 @@ public class InventoryItem {
         requirePositive(quantity);
         if (quantity > quantityReserved) {
             throw new InsufficientStockException(
-                    "Only " + quantityReserved + " units of " + TSID.from(productId) + " reserved");
+                    "Only " + quantityReserved + " units of " + productId + " reserved");
         }
         quantityReserved -= quantity;
     }
@@ -74,7 +77,7 @@ public class InventoryItem {
         requirePositive(quantity);
         if (quantity > quantityReserved) {
             throw new InsufficientStockException(
-                    "Only " + quantityReserved + " units of " + TSID.from(productId) + " reserved");
+                    "Only " + quantityReserved + " units of " + productId + " reserved");
         }
         quantityReserved -= quantity;
         quantityOnHand -= quantity;
@@ -86,11 +89,11 @@ public class InventoryItem {
         }
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public Long getProductId() {
+    public UUID getProductId() {
         return productId;
     }
 

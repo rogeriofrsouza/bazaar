@@ -1,6 +1,5 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import io.hypersistence.tsid.TSID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.springdoc.core.annotations.ParameterObject;
@@ -14,6 +13,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 @RequestMapping("/api/inventory")
 @RestController
@@ -26,15 +26,14 @@ class InventoryItemController {
     }
 
     @GetMapping("/{productId}")
-    InventoryItemResponse get(@PathVariable TSID productId) {
-        return inventoryItemService.findByProductId(productId.toLong());
+    InventoryItemResponse get(@PathVariable UUID productId) {
+        return inventoryItemService.findByProductId(productId);
     }
 
     @GetMapping
-    PagedModel<InventoryItemResponse> list(@RequestParam(required = false) @Size(max = 20) List<TSID> productIds,
+    PagedModel<InventoryItemResponse> list(@RequestParam(required = false) @Size(max = 20) List<UUID> productIds,
                                            @ParameterObject @PageableDefault(size = 20, sort = "productId") Pageable pageable) {
-        List<Long> ids = productIds == null ? null : productIds.stream().map(TSID::toLong).toList();
-        Page<InventoryItemResponse> page = inventoryItemService.findAll(ids, pageable);
+        Page<InventoryItemResponse> page = inventoryItemService.findAll(productIds, pageable);
         return new PagedModel<>(page);
     }
 
@@ -51,26 +50,26 @@ class InventoryItemController {
     }
 
     @PostMapping("/{productId}/restock")
-    InventoryItemResponse restock(@PathVariable TSID productId,
+    InventoryItemResponse restock(@PathVariable UUID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.restock(productId.toLong(), request.quantity());
+        return inventoryItemService.restock(productId, request.quantity());
     }
 
     @PostMapping("/{productId}/reserve")
-    InventoryItemResponse reserve(@PathVariable TSID productId,
+    InventoryItemResponse reserve(@PathVariable UUID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.reserve(productId.toLong(), request.quantity());
+        return inventoryItemService.reserve(productId, request.quantity());
     }
 
     @PostMapping("/{productId}/release")
-    InventoryItemResponse release(@PathVariable TSID productId,
+    InventoryItemResponse release(@PathVariable UUID productId,
                                   @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.release(productId.toLong(), request.quantity());
+        return inventoryItemService.release(productId, request.quantity());
     }
 
     @PostMapping("/{productId}/fulfil")
-    InventoryItemResponse fulfil(@PathVariable TSID productId,
+    InventoryItemResponse fulfil(@PathVariable UUID productId,
                                  @Valid @RequestBody QuantityRequest request) {
-        return inventoryItemService.fulfil(productId.toLong(), request.quantity());
+        return inventoryItemService.fulfil(productId, request.quantity());
     }
 }
