@@ -1,6 +1,5 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
-import io.hypersistence.tsid.TSID;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,13 +9,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "orders")
 public class Order {
 
     @Id
-    private Long id;
+    private UUID id;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -45,7 +45,7 @@ public class Order {
     protected Order() {
     }
 
-    private Order(Long id, Currency currency) {
+    private Order(UUID id, Currency currency) {
         this.id = id;
         this.currency = currency;
         this.status = OrderStatus.PENDING;
@@ -57,7 +57,7 @@ public class Order {
             throw new IllegalArgumentException("An order needs at least one item");
         }
 
-        Order order = new Order(TSID.Factory.getTsid().toLong(), currency);
+        Order order = new Order(UUID.ofEpochMillis(System.currentTimeMillis()), currency);
         items.forEach(order::addItem);
         return order;
     }
@@ -68,7 +68,7 @@ public class Order {
         total = total.add(item.getSubtotal());
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

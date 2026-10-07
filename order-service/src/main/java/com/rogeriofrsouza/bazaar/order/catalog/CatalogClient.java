@@ -1,7 +1,6 @@
 package com.rogeriofrsouza.bazaar.order.catalog;
 
 import com.rogeriofrsouza.bazaar.order.PagedResponse;
-import io.hypersistence.tsid.TSID;
 import org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -11,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class CatalogClient {
@@ -24,7 +24,7 @@ public class CatalogClient {
                 .build();
     }
 
-    public List<CatalogProduct> getProducts(Collection<TSID> ids) {
+    public List<CatalogProduct> getProducts(Collection<UUID> ids) {
         PagedResponse<CatalogProduct> page = restClient.get()
                 .uri(builder -> builder.path("/api/products")
                         .queryParam("ids", ids)

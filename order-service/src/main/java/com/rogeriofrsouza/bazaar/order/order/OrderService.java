@@ -2,7 +2,6 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
-import io.hypersistence.tsid.TSID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +11,7 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,21 +27,21 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse findById(Long id) {
+    public OrderResponse findById(UUID id) {
         return orderRepository.findWithItemsById(id)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Order " + TSID.from(id) + " not found"));
+                        HttpStatus.NOT_FOUND, "Order " + id + " not found"));
     }
 
     @Transactional
     public OrderResponse place(CreateOrderRequest request) {
-        Set<TSID> productIds = request.items()
+        Set<UUID> productIds = request.items()
                 .stream()
                 .map(OrderItemRequest::productId)
                 .collect(Collectors.toSet());
 
-        Map<TSID, CatalogProduct> products = catalogClient.getProducts(productIds)
+        Map<UUID, CatalogProduct> products = catalogClient.getProducts(productIds)
                 .stream()
                 .collect(Collectors.toMap(CatalogProduct::id, Function.identity()));
 
@@ -49,7 +49,7 @@ public class OrderService {
             List<String> missing = productIds.stream()
                     .filter(id -> !products.containsKey(id))
                     .sorted()
-                    .map(TSID::toString)
+                    .map(UUID::toString)
                     .toList();
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Products not found: " + String.join(", ", missing));
         }
@@ -66,7 +66,7 @@ public class OrderService {
                 .stream()
                 .map(item -> {
                     CatalogProduct product = products.get(item.productId());
-                    return OrderItem.create(product.id().toLong(), product.name(), product.price(), item.quantity());
+                    return OrderItem.create(product.id(), product.name(), product.price(), item.quantity());
                 })
                 .toList();
 

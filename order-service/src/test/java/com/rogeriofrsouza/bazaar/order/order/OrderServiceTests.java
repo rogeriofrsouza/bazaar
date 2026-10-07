@@ -4,7 +4,6 @@ import com.rogeriofrsouza.bazaar.order.ContainersConfig;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
 import com.rogeriofrsouza.bazaar.order.order.OrderResponse.OrderItemResponse;
-import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,8 +38,8 @@ class OrderServiceTests {
 
     @Test
     void placesOrderWithCatalogPrices() {
-        TSID keyboard = TSID.Factory.getTsid();
-        TSID mouse = TSID.Factory.getTsid();
+        UUID keyboard = UUID.randomUUID();
+        UUID mouse = UUID.randomUUID();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
                 new CatalogProduct(keyboard, "Keyboard", new BigDecimal("150.00"), BRL),
                 new CatalogProduct(mouse, "Mouse", new BigDecimal("49.90"), BRL)
@@ -50,7 +50,9 @@ class OrderServiceTests {
                 new OrderItemRequest(mouse, 1)
         )));
 
-        OrderResponse order = orderService.findById(TSID.from(placed.id()).toLong());
+        assertThat(placed.id().version()).isEqualTo(7);
+
+        OrderResponse order = orderService.findById(placed.id());
 
         assertThat(order.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.currency()).isEqualTo("BRL");
@@ -59,15 +61,15 @@ class OrderServiceTests {
                 .extracting(OrderItemResponse::productId, OrderItemResponse::productName,
                         OrderItemResponse::unitPrice, OrderItemResponse::quantity)
                 .containsExactlyInAnyOrder(
-                        tuple(keyboard.toString(), "Keyboard", new BigDecimal("150.00"), 2),
-                        tuple(mouse.toString(), "Mouse", new BigDecimal("49.90"), 1)
+                        tuple(keyboard, "Keyboard", new BigDecimal("150.00"), 2),
+                        tuple(mouse, "Mouse", new BigDecimal("49.90"), 1)
                 );
     }
 
     @Test
     void rejectsMixedCurrencies() {
-        TSID monitor = TSID.Factory.getTsid();
-        TSID cable = TSID.Factory.getTsid();
+        UUID monitor = UUID.randomUUID();
+        UUID cable = UUID.randomUUID();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
                 new CatalogProduct(monitor, "Monitor", new BigDecimal("900.00"), BRL),
                 new CatalogProduct(cable, "Cable", new BigDecimal("9.99"), USD)
@@ -85,8 +87,8 @@ class OrderServiceTests {
 
     @Test
     void rejectsUnknownProducts() {
-        TSID headset = TSID.Factory.getTsid();
-        TSID unknown = TSID.Factory.getTsid();
+        UUID headset = UUID.randomUUID();
+        UUID unknown = UUID.randomUUID();
         given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
                 new CatalogProduct(headset, "Headset", new BigDecimal("199.00"), BRL)
         ));
@@ -105,7 +107,7 @@ class OrderServiceTests {
 
     @Test
     void failsWhenOrderDoesNotExist() {
-        assertThatThrownBy(() -> orderService.findById(TSID.Factory.getTsid().toLong()))
+        assertThatThrownBy(() -> orderService.findById(UUID.randomUUID()))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }

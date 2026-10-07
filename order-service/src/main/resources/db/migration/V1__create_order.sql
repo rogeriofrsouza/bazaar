@@ -1,6 +1,6 @@
 CREATE TABLE orders
 (
-    id         bigint PRIMARY KEY,
+    id         uuid PRIMARY KEY,
     status     varchar(20)    NOT NULL,
     currency   varchar(3)     NOT NULL,
     total      numeric(12, 2) NOT NULL,
@@ -11,9 +11,9 @@ CREATE TABLE orders
 
 CREATE TABLE order_item
 (
-    id           bigint PRIMARY KEY,
-    order_id     bigint         NOT NULL REFERENCES orders (id),
-    product_id   bigint         NOT NULL,
+    id           uuid PRIMARY KEY,
+    order_id     uuid           NOT NULL REFERENCES orders (id),
+    product_id   uuid           NOT NULL,
     product_name varchar(200)   NOT NULL,
     unit_price   numeric(12, 2) NOT NULL,
     quantity     integer        NOT NULL

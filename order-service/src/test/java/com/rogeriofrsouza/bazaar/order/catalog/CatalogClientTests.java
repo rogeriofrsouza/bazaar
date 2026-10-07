@@ -1,22 +1,19 @@
 package com.rogeriofrsouza.bazaar.order.catalog;
 
-import com.rogeriofrsouza.bazaar.order.JacksonConfig;
-import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,12 +30,7 @@ class CatalogClientTests {
 
     @BeforeEach
     void setUp() throws Exception {
-        JsonMapper mapper = JsonMapper.builder()
-                .addModule(new JacksonConfig().tsidModule())
-                .build();
-        RestClient.Builder builder = RestClient.builder()
-                .configureMessageConverters(converters -> converters
-                        .withJsonConverter(new JacksonJsonHttpMessageConverter(mapper)));
+        RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
 
         // Pass requests straight through instead of resolving catalog-service through Eureka.
@@ -52,7 +44,7 @@ class CatalogClientTests {
 
     @Test
     void readsProductsFromPagedResponse() {
-        TSID id = TSID.Factory.getTsid();
+        UUID id = UUID.randomUUID();
         server.expect(requestTo("http://catalog-service/api/products?ids=" + id + "&size=1"))
                 .andRespond(withSuccess("""
                         {
@@ -71,7 +63,7 @@ class CatalogClientTests {
 
     @Test
     void failsWithBadGatewayWhenResponseIsEmpty() {
-        TSID id = TSID.Factory.getTsid();
+        UUID id = UUID.randomUUID();
         server.expect(requestTo("http://catalog-service/api/products?ids=" + id + "&size=1"))
                 .andRespond(withSuccess());
 
