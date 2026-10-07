@@ -4,7 +4,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 
 ## Tech stack
 
-- Java 25, Spring Boot 4.1, Maven (multi-module)
+- Java 26, Spring Boot 4.1, Maven (multi-module)
 - PostgreSQL 18 with Flyway migrations
 - Docker Compose for local infrastructure and apps
 - Cloud Native Buildpacks (`spring-boot:build-image`) for OCI images
@@ -40,7 +40,7 @@ bazaar/
 
 ## Prerequisites
 
-- JDK 25 and Maven 3.9 (the repo ships `.sdkmanrc`, so running `sdk env` sets both up with SDKMAN!). The Maven wrapper `./mvnw` also works.
+- JDK 26 and Maven 3.9 (the repo ships `.sdkmanrc`, so running `sdk env` sets both up with SDKMAN!). The Maven wrapper `./mvnw` also works.
 - Docker with Docker Compose v2
 - IntelliJ IDEA (or any IDE)
 

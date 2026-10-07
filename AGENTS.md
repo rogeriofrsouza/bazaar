@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository. See `README.md` fo
 
 ## Project
 
-Bazaar is an e-commerce platform built as Spring Boot microservices (Java 25, Spring Boot 4.1, Maven multi-module). Each service owns its PostgreSQL database. Infrastructure and apps run with Docker Compose. Images are built with Cloud Native Buildpacks.
+Bazaar is an e-commerce platform built as Spring Boot microservices (Java 26, Spring Boot 4.1, Maven multi-module). Each service owns its PostgreSQL database. Infrastructure and apps run with Docker Compose. Images are built with Cloud Native Buildpacks.
 
 ```
 pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
