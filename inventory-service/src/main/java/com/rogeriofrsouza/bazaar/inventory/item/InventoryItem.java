@@ -1,10 +1,10 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
-import org.springframework.data.relational.core.mapping.InsertOnlyProperty;
 import org.springframework.util.Assert;
 
 import java.time.Instant;
@@ -22,22 +22,21 @@ public class InventoryItem {
     private int quantityReserved;
 
     @Version
-    private Long version;
+    private @Nullable Long version;
 
     @CreatedDate
-    @InsertOnlyProperty
-    private Instant createdAt;
+    private @Nullable Instant createdAt;
 
     @LastModifiedDate
-    private Instant updatedAt;
+    private @Nullable Instant updatedAt;
 
     public InventoryItem(
             UUID id,
             UUID productId,
             int quantityOnHand,
             int quantityReserved,
-            Instant createdAt,
-            Instant updatedAt
+            @Nullable Instant createdAt,
+            @Nullable Instant updatedAt
     ) {
         Assert.isTrue(quantityOnHand >= 0, "Quantity on hand must not be negative");
         Assert.isTrue(quantityReserved >= 0, "Quantity reserved must not be negative");
@@ -51,7 +50,13 @@ public class InventoryItem {
 
     public static InventoryItem create(UUID productId, int quantityOnHand) {
         return new InventoryItem(
-                UUID.ofEpochMillis(System.currentTimeMillis()), productId, quantityOnHand, 0, null, null);
+                UUID.ofEpochMillis(System.currentTimeMillis()),
+                productId,
+                quantityOnHand,
+                0,
+                null,
+                null
+        );
     }
 
     public void restock(int quantity) {
@@ -113,11 +118,11 @@ public class InventoryItem {
         return quantityOnHand - quantityReserved;
     }
 
-    public Instant getCreatedAt() {
+    public @Nullable Instant getCreatedAt() {
         return createdAt;
     }
 
-    public Instant getUpdatedAt() {
+    public @Nullable Instant getUpdatedAt() {
         return updatedAt;
     }
 }

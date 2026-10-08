@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.core.JdbcAggregateOperations;
@@ -36,7 +37,7 @@ public class InventoryItemService {
     }
 
     @Transactional(readOnly = true)
-    public Page<InventoryItemResponse> findAll(Collection<UUID> productIds, Pageable pageable) {
+    public Page<InventoryItemResponse> findAll(@Nullable Collection<UUID> productIds, Pageable pageable) {
         var query = Query.query(productIdIn(productIds));
         List<InventoryItem> items = jdbcAggregateOperations.findAll(query.with(pageable), InventoryItem.class);
 
