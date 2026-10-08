@@ -1,19 +1,19 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.relational.core.sql.LockMode;
+import org.springframework.data.relational.repository.Lock;
+import org.springframework.data.repository.ListCrudRepository;
+import org.springframework.data.repository.ListPagingAndSortingRepository;
 
 import java.util.Optional;
 import java.util.UUID;
 
-public interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID>,
-        JpaSpecificationExecutor<InventoryItem> {
+public interface InventoryItemRepository extends ListCrudRepository<InventoryItem, UUID>,
+        ListPagingAndSortingRepository<InventoryItem, UUID> {
 
     Optional<InventoryItem> findByProductId(UUID productId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Lock(LockMode.PESSIMISTIC_WRITE)
     Optional<InventoryItem> findWithLockByProductId(UUID productId);
 
     boolean existsByProductId(UUID productId);

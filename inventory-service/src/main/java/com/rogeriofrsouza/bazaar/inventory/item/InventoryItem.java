@@ -1,53 +1,57 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.InsertOnlyProperty;
+import org.springframework.util.Assert;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
 public class InventoryItem {
 
     @Id
-    private UUID id;
+    private final UUID id;
 
-    @Column(nullable = false, unique = true)
-    private UUID productId;
+    private final UUID productId;
 
-    @Column(nullable = false)
     private int quantityOnHand;
 
-    @Column(nullable = false)
     private int quantityReserved;
 
     @Version
     private Long version;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
+    @InsertOnlyProperty
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(nullable = false)
+    @LastModifiedDate
     private Instant updatedAt;
 
-    protected InventoryItem() {
-    }
-
-    private InventoryItem(UUID id, UUID productId, int quantityOnHand) {
+    public InventoryItem(
+            UUID id,
+            UUID productId,
+            int quantityOnHand,
+            int quantityReserved,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        Assert.isTrue(quantityOnHand >= 0, "Quantity on hand must not be negative");
+        Assert.isTrue(quantityReserved >= 0, "Quantity reserved must not be negative");
         this.id = id;
         this.productId = productId;
         this.quantityOnHand = quantityOnHand;
-        this.quantityReserved = 0;
+        this.quantityReserved = quantityReserved;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public static InventoryItem create(UUID productId, int quantityOnHand) {
-        if (quantityOnHand < 0) {
-            throw new IllegalArgumentException("Quantity on hand must not be negative");
-        }
-        return new InventoryItem(UUID.ofEpochMillis(System.currentTimeMillis()), productId, quantityOnHand);
+        return new InventoryItem(
+                UUID.ofEpochMillis(System.currentTimeMillis()), productId, quantityOnHand, 0, null, null);
     }
 
     public void restock(int quantity) {
