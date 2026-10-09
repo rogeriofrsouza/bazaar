@@ -2,7 +2,6 @@ CREATE TABLE orders
 (
     id         uuid PRIMARY KEY,
     status     varchar(20)    NOT NULL,
-    currency   varchar(3)     NOT NULL,
     total      numeric(12, 2) NOT NULL,
     version    bigint         NOT NULL,
     created_at timestamptz    NOT NULL DEFAULT NOW(),

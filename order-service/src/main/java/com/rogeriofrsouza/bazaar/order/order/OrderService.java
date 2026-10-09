@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Currency;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,14 +53,6 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Products not found: " + String.join(", ", missing));
         }
 
-        Set<Currency> currencies = products.values().stream()
-                .map(CatalogProduct::currency)
-                .collect(Collectors.toSet());
-
-        if (currencies.size() > 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All products in an order must share one currency");
-        }
-
         List<OrderItem> items = request.items()
                 .stream()
                 .map(item -> {
@@ -70,7 +61,7 @@ public class OrderService {
                 })
                 .toList();
 
-        Order order = Order.place(currencies.iterator().next(), items);
+        Order order = Order.place(items);
         return OrderResponse.from(orderRepository.save(order));
     }
 }

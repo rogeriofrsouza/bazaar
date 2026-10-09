@@ -9,7 +9,6 @@ import java.util.UUID;
 public record OrderResponse(
         UUID id,
         OrderStatus status,
-        String currency,
         BigDecimal total,
         Instant createdAt,
         List<OrderItemResponse> items
@@ -23,7 +22,6 @@ public record OrderResponse(
         return new OrderResponse(
                 order.getId(),
                 order.getStatus(),
-                order.getCurrency().getCurrencyCode(),
                 order.getTotal(),
                 Objects.requireNonNull(order.getCreatedAt(), "Order must be saved before it is mapped"),
                 items

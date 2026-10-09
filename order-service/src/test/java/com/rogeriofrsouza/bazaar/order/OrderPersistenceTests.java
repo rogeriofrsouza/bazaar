@@ -12,7 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,8 +23,6 @@ import static org.assertj.core.api.Assertions.tuple;
 @Transactional
 class OrderPersistenceTests {
 
-    private static final Currency BRL = Currency.getInstance("BRL");
-
     @Autowired
     private OrderRepository orderRepository;
 
@@ -36,7 +33,7 @@ class OrderPersistenceTests {
     void savesAndLoadsOrderWithItems() {
         UUID keyboard = UUID.randomUUID();
         UUID mouse = UUID.randomUUID();
-        Order placed = orderRepository.save(Order.place(BRL, List.of(
+        Order placed = orderRepository.save(Order.place(List.of(
                 OrderItem.create(keyboard, "Keyboard", new BigDecimal("150.00"), 2),
                 OrderItem.create(mouse, "Mouse", new BigDecimal("49.90"), 1)
         )));
@@ -45,7 +42,6 @@ class OrderPersistenceTests {
 
         assertThat(order.getId().version()).isEqualTo(7);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
-        assertThat(order.getCurrency()).isEqualTo(BRL);
         assertThat(order.getTotal()).isEqualByComparingTo("349.90");
         assertThat(order.getCreatedAt()).isNotNull();
         assertThat(order.getUpdatedAt()).isNotNull();
@@ -64,7 +60,7 @@ class OrderPersistenceTests {
 
     @Test
     void resavingLoadedOrderKeepsItems() {
-        Order placed = orderRepository.save(Order.place(BRL, List.of(
+        Order placed = orderRepository.save(Order.place(List.of(
                 OrderItem.create(UUID.randomUUID(), "Monitor", new BigDecimal("900.00"), 1),
                 OrderItem.create(UUID.randomUUID(), "Cable", new BigDecimal("9.99"), 3)
         )));

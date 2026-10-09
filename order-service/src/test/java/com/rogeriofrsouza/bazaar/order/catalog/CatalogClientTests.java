@@ -11,7 +11,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,7 +57,7 @@ class CatalogClientTests {
         List<CatalogProduct> products = catalogClient.getProducts(List.of(id));
 
         assertThat(products).containsExactly(
-                new CatalogProduct(id, "Keyboard", new BigDecimal("150.00"), Currency.getInstance("BRL")));
+                new CatalogProduct(id, "Keyboard", new BigDecimal("150.00")));
     }
 
     @Test
