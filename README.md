@@ -57,7 +57,7 @@ Use this to run several services together from the IDE.
 2. Run `ConfigServerApplication`, `DiscoveryServerApplication` and `ApiGatewayApplication` from the IDE.
 3. Run each service's main class from the IDE (e.g. `CatalogServiceApplication`).
 
-Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed. The config server reads them from the [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository, so local edits there take effect only after they are pushed.
+Services fetch their settings from the config server at `localhost:8888`, and those settings default to the `localhost` ports published by `infra.yml`, so no extra configuration is needed. The config server reads them from `config-repo/` on disk, so edits there take effect immediately.
 
 ### Option 2: A single service with Testcontainers
 
@@ -104,9 +104,9 @@ docker compose -f docker/infra.yml -f docker/apps.yml down -v   # also remove vo
 
 ## Configuration
 
-Service settings live in the [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository and are served by `config-server` (see below). Each service's own `application.yaml` only holds its name and how to reach the config server.
+Service settings live in `config-repo/` and are served by `config-server` (see below). Each service's own `application.yaml` only holds its name and how to reach the config server.
 
-The `<service>.yaml` files in bazaar-config read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
+The `<service>.yaml` files in `config-repo/` read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
 
 | Variable      | `catalog-service` default                  | `inventory-service` default                  | `order-service` default                   |
 |---------------|--------------------------------------------|----------------------------------------------|-------------------------------------------|
@@ -120,11 +120,11 @@ The `<service>.yaml` files in bazaar-config read connection settings from enviro
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
-All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in bazaar-config enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
+All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in `config-repo/` enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
 
 ### Config server
 
-`config-server` runs Spring Cloud Config with the git backend. It clones `CONFIG_GIT_URI` (default `https://github.com/rogeriofrsouza/bazaar-config.git`) at `CONFIG_GIT_LABEL` (default `main`) on startup and serves `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. Config changes take effect once they are pushed to bazaar-config. Set `CONFIG_GIT_LABEL` to a branch to try unmerged config.
+`config-server` runs Spring Cloud Config with the `native` (filesystem) backend. It serves the files in `CONFIG_SEARCH_LOCATIONS` (default `file:../config-repo/`, relative to the `config-server` module directory, which is the working directory when run from the IDE or Maven): `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The files are read on every request, so edits take effect without a restart (services pick them up on their next startup or refresh). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo` and sets `CONFIG_SEARCH_LOCATIONS` from `docker/.env`.
 
 ### Discovery server
 
@@ -132,7 +132,7 @@ All servers run on virtual threads (`spring.threads.virtual.enabled`): the share
 
 ### API gateway
 
-`api-gateway` runs Spring Cloud Gateway Server Web MVC on port 8080 and is the single entry point for clients. Its routes live in `api-gateway.yaml` in bazaar-config and forward by path to `lb://<service>` URIs, which are resolved through Eureka and load balanced with Spring Cloud LoadBalancer:
+`api-gateway` runs Spring Cloud Gateway Server Web MVC on port 8080 and is the single entry point for clients. Its routes live in `config-repo/api-gateway.yaml` and forward by path to `lb://<service>` URIs, which are resolved through Eureka and load balanced with Spring Cloud LoadBalancer:
 
 | Path                                     | Service             |
 |------------------------------------------|---------------------|

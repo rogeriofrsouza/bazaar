@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: catalog-service
+              uri: lb://catalog-service
+              predicates:
+                - Path=/api/products/**,/api/categories/**
+            - id: inventory-service
+              uri: lb://inventory-service
+              predicates:
+                - Path=/api/inventory/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: catalog-service
+        url: /catalog-service/v3/api-docs
+      - name: inventory-service
+        url: /inventory-service/v3/api-docs
+      - name: order-service
+        url: /order-service/v3/api-docs

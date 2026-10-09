@@ -4,13 +4,13 @@ server:
 spring:
   application:
     name: config-server
+  profiles:
+    active: native
   threads:
     virtual:
       enabled: true
   cloud:
     config:
       server:
-        git:
-          uri: ${CONFIG_GIT_URI:https://github.com/rogeriofrsouza/bazaar-config.git}
-          default-label: ${CONFIG_GIT_LABEL:main}
-          clone-on-start: true
+        native:
+          search-locations: ${CONFIG_SEARCH_LOCATIONS:file:../config-repo/}

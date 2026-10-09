@@ -8,9 +8,10 @@ Bazaar is an e-commerce platform built as Spring Boot microservices (Java 26, Sp
 
 ```
 pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
-config-server/       # Spring Cloud Config server (git backend on bazaar-config, no database)
+config-repo/         # Config files served by config-server (application.yaml, <service>.yaml)
+config-server/       # Spring Cloud Config server (native backend on config-repo/, no database)
 discovery-server/    # Eureka server, standalone (own application.yaml, no config client, no database)
-api-gateway/         # Spring Cloud Gateway Server Web MVC; routes live in bazaar-config (no database)
+api-gateway/         # Spring Cloud Gateway Server Web MVC; routes live in config-repo/ (no database)
 catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
 docker/infra.yml     # Databases, brokers, etc.
@@ -39,7 +40,7 @@ docker/apps.yml      # Microservice containers
 
 ## Configuration and Docker
 
-- Service settings live in the separate [bazaar-config](https://github.com/rogeriofrsouza/bazaar-config) repository (local clone usually at `../bazaar-config`): `application.yaml` for shared settings, `<service>.yaml` for one service. `config-server` reads it with the git backend (`CONFIG_GIT_URI`, `CONFIG_GIT_LABEL`), so changes take effect only after they are pushed. There is no `native` profile and no volume mount; don't reintroduce them. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
+- Service settings live in `config-repo/` at the repository root: `application.yaml` for shared settings, `<service>.yaml` for one service. `config-server` reads them from the filesystem with the `native` profile (`CONFIG_SEARCH_LOCATIONS`, default `file:../config-repo/`, relative to the module directory; in Docker the folder is mounted read-only at `/config-repo`), so edits take effect without a push or restart. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
 - Config files read connection settings from env vars with **localhost defaults**, e.g. `url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}`. The client resolves the placeholders. Running from the IDE needs no profile. Containers and deployed environments override the env vars.
 - There is no `spring-boot-docker-compose` and no `local` profile. Don't reintroduce them.
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
@@ -54,16 +55,16 @@ docker/apps.yml      # Microservice containers
   - `Test<Service>Application`: `SpringApplication.from(<Service>Application::main).with(ContainersConfig.class).run(args)`, for dev-time runs with DevTools.
   - Integration tests: `@SpringBootTest` + `@Import(ContainersConfig.class)`.
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
-- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the bazaar-config settings tests rely on (`server.port`, shared `spring.mvc` settings), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
+- Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the `config-repo/` settings tests rely on (`server.port`, shared `spring.mvc` settings), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
 - `config-server`, `discovery-server` and `api-gateway` have no containers, so they only have a plain `@SpringBootTest` context-load test.
 
 ## Adding a new microservice
 
 1. Create the module `<name>-service` with the parent `com.rogeriofrsouza:bazaar` and add it to `<modules>` in the root `pom.xml`. Declare `spring-boot-maven-plugin` without extra config; the image settings are inherited. Add `spring-cloud-starter-config` and `spring-cloud-starter-netflix-eureka-client`.
 2. Use Spring Data JDBC, not JPA. Add `spring-boot-starter-data-jdbc`, `spring-boot-starter-flyway`, `flyway-database-postgresql`, `jspecify` and `postgresql` (runtime), plus `spring-boot-starter-data-jdbc-test`, `spring-boot-starter-flyway-test`, `spring-boot-testcontainers` and `testcontainers-postgresql` for tests; catalog-service's `pom.xml` is the reference. Follow the rules above: UUIDv7 `java.util.UUID` ids, a `JdbcConfig` with `@EnableJdbcAuditing` when aggregates are audited, and a `@NullMarked` `package-info.java` in every package.
-3. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `<name>-service.yaml` in bazaar-config; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
-4. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in bazaar-config's `<name>-service.yaml`.
+3. Pick the next free app port (`catalog-service` uses 8081). Put `server.port` and the datasource settings in `config-repo/<name>-service.yaml`; the local `application.yaml` gets `spring.application.name` and the config-client settings, copied from an existing service.
+4. Add `<name>-service-db` to `docker/infra.yml` with its own named volume, healthcheck and a **distinct host port** (`<NAME>_DB_PORT` in `.env`), and use the same port in the localhost default in `config-repo/<name>-service.yaml`.
 5. Add the app to `docker/apps.yml` with `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` coming from `<NAME>_DB_*` in `docker/.env` plus `CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}` and `DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}`. It `depends_on` its database with `condition: service_healthy` and on `config-server` and `discovery-server` with `condition: service_started`. Set `restart: on-failure` so it restarts until `config-server` is up.
 6. Add `ContainersConfig`, `Test<Name>ServiceApplication`, the test `config/application.yaml` (config client and Eureka client disabled), a context-load test and a `<Name>PersistenceTests` like `CatalogPersistenceTests` as described above.
-7. Add `springdoc-openapi-starter-webmvc-api` and an `OpenApiConfig` (copied from an existing service) whose server is `${bazaar.gateway-url}`. In bazaar-config's `api-gateway.yaml`, add a `springdoc.swagger-ui.urls` entry with `url: /<name>-service/v3/api-docs`; the gateway's `ApiDocsRouteConfig` already routes it.
+7. Add `springdoc-openapi-starter-webmvc-api` and an `OpenApiConfig` (copied from an existing service) whose server is `${bazaar.gateway-url}`. In `config-repo/api-gateway.yaml`, add a `springdoc.swagger-ui.urls` entry with `url: /<name>-service/v3/api-docs`; the gateway's `ApiDocsRouteConfig` already routes it.
 8. Update the services table and the gateway routing table in `README.md`.
