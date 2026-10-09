@@ -1,0 +1,16 @@
+{
+  "realm": "bazaar",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "customer",
+        "description": "Shops the catalog and places orders"
+      },
+      {
+        "name": "admin",
+        "description": "Manages the catalog, inventory and orders"
+      }
+    ]
+  }
+}

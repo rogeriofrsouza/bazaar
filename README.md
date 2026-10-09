@@ -1,6 +1,6 @@
 # Bazaar
 
-An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services will share common infrastructure components (Redis, RabbitMQ, Keycloak, etc.) as they are added.
+An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services share common infrastructure components (Keycloak, with Redis, RabbitMQ, etc. to come).
 
 ## Tech stack
 
@@ -34,8 +34,9 @@ bazaar/
 ├── order-service/       # Order microservice
 └── docker/
     ├── .env             # Variables used by the compose files
-    ├── infra.yml        # Infrastructure (databases, brokers, ...)
-    └── apps.yml         # Microservice containers
+    ├── infra.yml        # Infrastructure (databases, Keycloak, ...)
+    ├── apps.yml         # Microservice containers
+    └── keycloak/        # Realm imported by Keycloak on startup
 ```
 
 ## Prerequisites
@@ -146,6 +147,19 @@ The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), si
 #### API documentation
 
 Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api-docs`. The gateway proxies each spec as `/<service>/v3/api-docs` and hosts one Swagger UI for all of them at `http://localhost:8080/swagger-ui.html`, with a dropdown to pick the service. The specs list the gateway (`GATEWAY_URL`, default `http://localhost:8080`) as their server, so "Try it out" requests go through the gateway.
+
+### Keycloak
+
+`infra.yml` runs Keycloak in development mode (`start-dev`, embedded database in the `keycloak-data` volume) at `http://localhost:9090` (`KEYCLOAK_PORT`). The admin console logs in with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
+
+On startup Keycloak imports `docker/keycloak/bazaar-realm.json`, which defines the `bazaar` realm with two realm roles:
+
+| Role       | Purpose                                   |
+|------------|-------------------------------------------|
+| `customer` | Shops the catalog and places orders       |
+| `admin`    | Manages the catalog, inventory and orders |
+
+The import skips a realm that already exists, so after editing the file recreate the volume (`docker compose -f docker/infra.yml down -v`) to import it again.
 
 ## Tests
 

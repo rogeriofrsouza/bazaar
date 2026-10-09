@@ -14,8 +14,9 @@ discovery-server/    # Eureka server, standalone (own application.yaml, no confi
 api-gateway/         # Spring Cloud Gateway Server Web MVC; routes live in config-repo/ (no database)
 catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
-docker/infra.yml     # Databases, brokers, etc.
+docker/infra.yml     # Databases, Keycloak, brokers, etc.
 docker/apps.yml      # Microservice containers
+docker/keycloak/     # bazaar realm (customer and admin roles), imported by Keycloak on startup
 ```
 
 ## Workflow rules
