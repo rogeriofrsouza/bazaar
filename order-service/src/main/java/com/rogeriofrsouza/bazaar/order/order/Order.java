@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -31,13 +32,13 @@ public class Order {
     private final Set<OrderItem> items;
 
     @Version
-    private Long version;
+    private @Nullable Long version;
 
     @CreatedDate
-    private Instant createdAt;
+    private @Nullable Instant createdAt;
 
     @LastModifiedDate
-    private Instant updatedAt;
+    private @Nullable Instant updatedAt;
 
     public Order(
             UUID id,
@@ -45,8 +46,8 @@ public class Order {
             Currency currency,
             BigDecimal total,
             Set<OrderItem> items,
-            Instant createdAt,
-            Instant updatedAt
+            @Nullable Instant createdAt,
+            @Nullable Instant updatedAt
     ) {
         Assert.notEmpty(items, "An order needs at least one item");
         Assert.isTrue(total.compareTo(sumOfSubtotals(items)) == 0, "Order total must match its items");
@@ -98,11 +99,11 @@ public class Order {
         return items;
     }
 
-    public Instant getCreatedAt() {
+    public @Nullable Instant getCreatedAt() {
         return createdAt;
     }
 
-    public Instant getUpdatedAt() {
+    public @Nullable Instant getUpdatedAt() {
         return updatedAt;
     }
 }

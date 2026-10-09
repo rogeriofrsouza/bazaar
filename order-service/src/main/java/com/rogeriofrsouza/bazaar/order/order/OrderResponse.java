@@ -3,6 +3,7 @@ package com.rogeriofrsouza.bazaar.order.order;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public record OrderResponse(
@@ -24,7 +25,7 @@ public record OrderResponse(
                 order.getStatus(),
                 order.getCurrency().getCurrencyCode(),
                 order.getTotal(),
-                order.getCreatedAt(),
+                Objects.requireNonNull(order.getCreatedAt(), "Order must be saved before it is mapped"),
                 items
         );
     }

@@ -1,6 +1,7 @@
 package com.rogeriofrsouza.bazaar.order.catalog;
 
 import com.rogeriofrsouza.bazaar.order.PagedResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,7 @@ public class CatalogClient {
     }
 
     public List<CatalogProduct> getProducts(Collection<UUID> ids) {
-        PagedResponse<CatalogProduct> page = restClient.get()
+        @Nullable PagedResponse<CatalogProduct> page = restClient.get()
                 .uri(builder -> builder.path("/api/products")
                         .queryParam("ids", ids)
                         .queryParam("size", ids.size())
