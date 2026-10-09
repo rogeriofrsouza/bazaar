@@ -2,7 +2,6 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Currency;
 import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
@@ -22,8 +21,6 @@ public class Product {
     private final @Nullable String description;
 
     private final BigDecimal price;
-
-    private final Currency currency;
 
     private final @Nullable String imageUrl;
 
@@ -45,7 +42,6 @@ public class Product {
             String name,
             @Nullable String description,
             BigDecimal price,
-            Currency currency,
             @Nullable String imageUrl,
             ProductStatus status,
             UUID categoryId,
@@ -58,7 +54,6 @@ public class Product {
         this.name = name;
         this.description = description;
         this.price = price;
-        this.currency = currency;
         this.imageUrl = imageUrl;
         this.status = status;
         this.categoryId = categoryId;
@@ -70,12 +65,11 @@ public class Product {
             String name,
             @Nullable String description,
             BigDecimal price,
-            Currency currency,
             @Nullable String imageUrl,
             UUID categoryId
     ) {
         return new Product(
-                UUID.ofEpochMillis(System.currentTimeMillis()), name, description, price, currency, imageUrl,
+                UUID.ofEpochMillis(System.currentTimeMillis()), name, description, price, imageUrl,
                 ProductStatus.ACTIVE, categoryId, null, null);
     }
 
@@ -93,10 +87,6 @@ public class Product {
 
     public BigDecimal getPrice() {
         return price;
-    }
-
-    public Currency getCurrency() {
-        return currency;
     }
 
     public @Nullable String getImageUrl() {

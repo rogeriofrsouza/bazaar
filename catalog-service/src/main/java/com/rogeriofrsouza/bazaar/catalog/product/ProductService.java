@@ -82,7 +82,6 @@ public class ProductService {
                 request.name(),
                 request.description(),
                 request.price(),
-                request.currency(),
                 request.imageUrl(),
                 category.getId()
         );

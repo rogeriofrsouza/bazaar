@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
-import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,10 +50,8 @@ class CatalogPersistenceTests {
         assertThat(found).isEqualTo(created);
         assertThat(found.name()).isEqualTo("Phone X");
         assertThat(found.price()).isEqualByComparingTo("499.90");
-        assertThat(found.currency()).isEqualTo("USD");
 
         Product product = productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE).orElseThrow();
-        assertThat(product.getCurrency()).isEqualTo(Currency.getInstance("USD"));
         assertThat(product.getCreatedAt()).isNotNull();
         assertThat(product.getUpdatedAt()).isNotNull();
     }
@@ -95,7 +92,6 @@ class CatalogPersistenceTests {
     }
 
     private static CreateProductRequest request(String name, String category) {
-        return new CreateProductRequest(name, null, new BigDecimal("499.90"), Currency.getInstance("USD"), null,
-                category);
+        return new CreateProductRequest(name, null, new BigDecimal("499.90"), null, category);
     }
 }

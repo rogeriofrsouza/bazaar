@@ -4,7 +4,6 @@ import jakarta.validation.constraints.*;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
-import java.util.Currency;
 
 public record CreateProductRequest(
     @NotBlank
@@ -17,9 +16,6 @@ public record CreateProductRequest(
     @DecimalMin("0.00")
     @Digits(integer = 10, fraction = 2)
     BigDecimal price,
-
-    @NotNull
-    Currency currency,
 
     @Size(max = 255)
     @Nullable String imageUrl,

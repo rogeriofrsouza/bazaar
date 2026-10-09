@@ -10,7 +10,6 @@ public record ProductResponse(
     String name,
     @Nullable String description,
     BigDecimal price,
-    String currency,
     @Nullable String imageUrl
 ) {
     public static ProductResponse from(Product product) {
@@ -19,7 +18,6 @@ public record ProductResponse(
             product.getName(),
             product.getDescription(),
             product.getPrice(),
-            product.getCurrency().getCurrencyCode(),
             product.getImageUrl()
         );
     }

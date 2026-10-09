@@ -48,7 +48,7 @@ class CatalogClientTests {
                 .andRespond(withSuccess("""
                         {
                           "content": [
-                            {"id": "%s", "name": "Keyboard", "price": 150.00, "currency": "BRL"}
+                            {"id": "%s", "name": "Keyboard", "price": 150.00}
                           ],
                           "page": {"size": 1, "number": 0, "totalElements": 1, "totalPages": 1}
                         }
