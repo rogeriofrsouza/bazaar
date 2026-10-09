@@ -1,71 +1,81 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.MappedCollection;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
-@Entity
-@Table(name = "orders")
+@Table("orders")
 public class Order {
 
     @Id
-    private UUID id;
+    private final UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status;
+    private final OrderStatus status;
 
-    @Column(nullable = false, length = 3)
-    private Currency currency;
+    private final Currency currency;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal total;
+    private final BigDecimal total;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items = new ArrayList<>();
+    @MappedCollection(idColumn = "order_id")
+    private final Set<OrderItem> items;
 
     @Version
     private Long version;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(nullable = false)
+    @LastModifiedDate
     private Instant updatedAt;
 
-    protected Order() {
-    }
-
-    private Order(UUID id, Currency currency) {
+    public Order(
+            UUID id,
+            OrderStatus status,
+            Currency currency,
+            BigDecimal total,
+            Set<OrderItem> items,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        Assert.notEmpty(items, "An order needs at least one item");
+        Assert.isTrue(total.compareTo(sumOfSubtotals(items)) == 0, "Order total must match its items");
         this.id = id;
+        this.status = status;
         this.currency = currency;
-        this.status = OrderStatus.PENDING;
-        this.total = BigDecimal.ZERO;
+        this.total = total;
+        this.items = Set.copyOf(items);
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public static Order place(Currency currency, List<OrderItem> items) {
-        if (items.isEmpty()) {
-            throw new IllegalArgumentException("An order needs at least one item");
-        }
-
-        Order order = new Order(UUID.ofEpochMillis(System.currentTimeMillis()), currency);
-        items.forEach(order::addItem);
-        return order;
+        Set<OrderItem> itemSet = Set.copyOf(items);
+        return new Order(
+                UUID.ofEpochMillis(System.currentTimeMillis()),
+                OrderStatus.PENDING,
+                currency,
+                sumOfSubtotals(itemSet),
+                itemSet,
+                null,
+                null
+        );
     }
 
-    public void addItem(OrderItem item) {
-        item.assignTo(this);
-        items.add(item);
-        total = total.add(item.getSubtotal());
+    private static BigDecimal sumOfSubtotals(Set<OrderItem> items) {
+        return items.stream()
+                .map(OrderItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public UUID getId() {
@@ -84,7 +94,7 @@ public class Order {
         return total;
     }
 
-    public List<OrderItem> getItems() {
+    public Set<OrderItem> getItems() {
         return items;
     }
 

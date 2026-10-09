@@ -1,35 +1,28 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Entity
 public class OrderItem {
 
     @Id
-    private UUID id;
+    private final UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Order order;
+    private final UUID productId;
 
-    @Column(nullable = false)
-    private UUID productId;
+    private final String productName;
 
-    @Column(nullable = false, length = 200)
-    private String productName;
+    private final BigDecimal unitPrice;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal unitPrice;
+    private final int quantity;
 
-    @Column(nullable = false)
-    private int quantity;
-
-    protected OrderItem() {
-    }
-
-    private OrderItem(UUID id, UUID productId, String productName, BigDecimal unitPrice, int quantity) {
+    public OrderItem(UUID id, UUID productId, String productName, BigDecimal unitPrice, int quantity) {
+        Assert.hasText(productName, "Product name must not be blank");
+        Assert.isTrue(unitPrice.signum() >= 0, "Unit price must not be negative");
+        Assert.isTrue(quantity > 0, "Quantity must be positive");
         this.id = id;
         this.productId = productId;
         this.productName = productName;
@@ -38,23 +31,12 @@ public class OrderItem {
     }
 
     public static OrderItem create(UUID productId, String productName, BigDecimal unitPrice, int quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
-        }
         return new OrderItem(
                 UUID.ofEpochMillis(System.currentTimeMillis()), productId, productName, unitPrice, quantity);
     }
 
-    void assignTo(Order order) {
-        this.order = order;
-    }
-
     public UUID getId() {
         return id;
-    }
-
-    public Order getOrder() {
-        return order;
     }
 
     public UUID getProductId() {

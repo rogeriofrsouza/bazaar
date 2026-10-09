@@ -28,7 +28,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderResponse findById(UUID id) {
-        return orderRepository.findWithItemsById(id)
+        return orderRepository.findById(id)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Order " + id + " not found"));
