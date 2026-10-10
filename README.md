@@ -150,7 +150,9 @@ Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api
 
 ### Keycloak
 
-`infra.yml` runs Keycloak in development mode (`start-dev`, embedded database in the `keycloak-data` volume) at `http://localhost:9090` (`KEYCLOAK_PORT`). The admin console logs in with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
+`infra.yml` runs Keycloak in development mode (`start-dev`) at `http://localhost:9090` (`KEYCLOAK_PORT`). The admin console logs in with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
+
+Keycloak stores its data in its own PostgreSQL instance, `keycloak-db` (host port 5435, `KEYCLOAK_DB_PORT`; `keycloak` / `keycloak` from `KEYCLOAK_DB_USERNAME` / `KEYCLOAK_DB_PASSWORD`), in the `keycloak-db-data` volume.
 
 On startup Keycloak imports `docker/keycloak/bazaar-realm.json`, which defines the `bazaar` realm with two realm roles:
 
@@ -159,7 +161,7 @@ On startup Keycloak imports `docker/keycloak/bazaar-realm.json`, which defines t
 | `customer` | Shops the catalog and places orders       |
 | `admin`    | Manages the catalog, inventory and orders |
 
-The import skips a realm that already exists, so after editing the file recreate the volume (`docker compose -f docker/infra.yml down -v`) to import it again.
+The import skips a realm that already exists, so after editing the file recreate the volumes (`docker compose -f docker/infra.yml down -v`) to import it again.
 
 ## Tests
 
