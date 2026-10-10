@@ -74,8 +74,9 @@ services:
     image: quay.io/keycloak/keycloak:26.8
     command: start-dev --import-realm
     ports:
-      - "${KEYCLOAK_PORT}:8080"
+      - "${KEYCLOAK_PORT}:9090"
     environment:
+      KC_HTTP_PORT: ${KEYCLOAK_PORT}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres

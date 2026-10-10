@@ -150,7 +150,7 @@ Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api
 
 ### Keycloak
 
-`infra.yml` runs Keycloak in development mode (`start-dev`) at `http://localhost:9090` (`KEYCLOAK_PORT`). The admin console logs in with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
+`infra.yml` runs Keycloak in development mode (`start-dev`) at `http://localhost:9090`. `KEYCLOAK_PORT` is both the port Keycloak listens on inside the container (`KC_HTTP_PORT`) and the published host port, so the URL has the same port from the host and from other containers (`http://keycloak:9090`). The admin console logs in with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
 
 Keycloak stores its data in its own PostgreSQL instance, `keycloak-db` (host port 5435, `KEYCLOAK_DB_PORT`; `keycloak` / `keycloak` from `KEYCLOAK_DB_USERNAME` / `KEYCLOAK_DB_PASSWORD`), in the `keycloak-db-data` volume.
 
