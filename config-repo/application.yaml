@@ -5,6 +5,12 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:9090/realms/bazaar}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:9090/realms/bazaar/protocol/openid-connect/certs}
 
 eureka:
   client:

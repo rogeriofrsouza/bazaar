@@ -73,6 +73,8 @@ Or from the terminal:
 
 Containers are annotated with `@RestartScope`, so they survive Spring Boot DevTools restarts. The database is discarded when the application stops.
 
+Keycloak is not one of those containers. Public endpoints work without it, but calls that carry a token need the Keycloak from `infra.yml` running to be validated.
+
 ### Option 3: Everything in Docker
 
 Use this to run the whole system as it would run when deployed.
@@ -119,6 +121,8 @@ The `<service>.yaml` files in `config-repo/` read connection settings from envir
 
 `DISCOVERY_SERVER_URL` (default `http://localhost:8761/eureka/`) points each service at the Eureka server. Services register on startup and keep retrying if it isn't up yet.
 
+`JWT_ISSUER_URI` (default `http://localhost:9090/realms/bazaar`) and `JWT_JWK_SET_URI` (default `http://localhost:9090/realms/bazaar/protocol/openid-connect/certs`) point each service at Keycloak to validate access tokens (see [Security](#security)).
+
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
 All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in `config-repo/` enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
@@ -162,6 +166,25 @@ On startup Keycloak imports `docker/keycloak/bazaar-realm.json`, which defines t
 | `admin`    | Manages the catalog, inventory and orders |
 
 The import skips a realm that already exists, so after editing the file recreate the volumes (`docker compose -f docker/infra.yml down -v`) to import it again.
+
+### Security
+
+`catalog-service`, `inventory-service` and `order-service` are OAuth2 resource servers: they accept a JWT access token issued by the `bazaar` realm, sent as `Authorization: Bearer <token>`. The gateway forwards the header unchanged. Each service declares its rules in its own `SecurityConfig`:
+
+| Request                                               | Access                      |
+|-------------------------------------------------------|-----------------------------|
+| `GET /api/products/**`, `GET /api/categories/**`      | Public                      |
+| `GET /v3/api-docs` (read by the gateway's Swagger UI) | Public                      |
+| Everything else, including writes on products         | Valid token (401 otherwise) |
+
+Only the `GET` method is opened on the public paths, so an endpoint added later needs a token unless `SecurityConfig` opens it. Roles are not checked yet.
+
+A service validates a token in two steps, each with its own setting in `config-repo/application.yaml`:
+
+- `JWT_JWK_SET_URI` is where the service downloads Keycloak's signing keys. They are fetched when the first token arrives, so services start without Keycloak.
+- `JWT_ISSUER_URI` is compared with the token's `iss` claim and is never called.
+
+They are separate because of Docker. Keycloak sets `iss` from the URL the token was requested on, which is `http://localhost:9090` for a client on the host, while a container reaches Keycloak at `http://keycloak:9090`. So `docker/.env` keeps `KEYCLOAK_ISSUER_URI` on `localhost` and points `KEYCLOAK_JWK_SET_URI` at `keycloak`.
 
 ## Tests
 
