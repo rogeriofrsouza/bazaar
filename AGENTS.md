@@ -16,7 +16,7 @@ catalog-service/     # One module per microservice
 docker/.env          # Values for compose variables
 docker/infra.yml     # Databases, Keycloak, brokers, etc.
 docker/apps.yml      # Microservice containers
-docker/keycloak/     # bazaar realm (customer and admin roles), imported by Keycloak on startup
+docker/keycloak/     # bazaar realm (roles, bazaar-web client, test users), imported by Keycloak on startup
 ```
 
 ## Workflow rules
@@ -47,6 +47,7 @@ docker/keycloak/     # bazaar realm (customer and admin roles), imported by Keyc
 - There is no `spring-boot-docker-compose` and no `local` profile. Don't reintroduce them.
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
 - Keycloak has two URLs in `docker/.env`: `KEYCLOAK_ISSUER_URI` uses `localhost` (it must equal the `iss` claim of tokens requested from the host) and `KEYCLOAK_JWK_SET_URI` uses the `keycloak` container name (where containers download the signing keys). `apps.yml` passes them to each service as `JWT_ISSUER_URI` / `JWT_JWK_SET_URI`. Keys load on the first token, so services don't `depends_on` Keycloak.
+- `docker/keycloak/bazaar-realm.json` is the source of truth for the realm: the `customer` and `admin` roles, the public `bazaar-web` client (authorization code + PKCE, plus the password grant for local tokens) and one test user per role (`customer` / `customer`, `admin` / `admin`). Change the realm there, not in the admin console. Keycloak imports it only when the realm doesn't exist yet.
 - Both compose files use project name `bazaar`. Full stack: `docker compose -f docker/infra.yml -f docker/apps.yml up -d`.
 - Images come from the parent POM config: `rogeriofrsouza/bazaar-<artifactId>:<version>` plus `:latest`. `apps.yml` references the untagged name (`latest`).
 

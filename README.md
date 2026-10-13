@@ -165,7 +165,22 @@ On startup Keycloak imports `docker/keycloak/bazaar-realm.json`, which defines t
 | `customer` | Shops the catalog and places orders       |
 | `admin`    | Manages the catalog, inventory and orders |
 
-The import skips a realm that already exists, so after editing the file recreate the volumes (`docker compose -f docker/infra.yml down -v`) to import it again.
+The realm also has one client, `bazaar-web`, for first-party frontends and the gateway's Swagger UI. It is a public client (no secret) that logs users in with the authorization code flow and PKCE (`S256`), and accepts redirects to the gateway (`http://localhost:8080/*`). It also allows the password grant, which is there only to fetch tokens during local development.
+
+Two test users are imported, one per role:
+
+| Username   | Password   | Role       |
+|------------|------------|------------|
+| `customer` | `customer` | `customer` |
+| `admin`    | `admin`    | `admin`    |
+
+The import skips a realm that already exists, so after editing the file reset Keycloak's database to import it again. This leaves the service databases alone:
+
+```sh
+docker compose -f docker/infra.yml rm -sf keycloak keycloak-db
+docker volume rm bazaar_keycloak-db-data
+docker compose -f docker/infra.yml up -d
+```
 
 ### Security
 
@@ -178,6 +193,15 @@ The import skips a realm that already exists, so after editing the file recreate
 | Everything else, including writes on products         | Valid token (401 otherwise) |
 
 Only the `GET` method is opened on the public paths, so an endpoint added later needs a token unless `SecurityConfig` opens it. Roles are not checked yet.
+
+To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
+
+```sh
+curl -d client_id=bazaar-web -d grant_type=password -d username=customer -d password=customer \
+  http://localhost:9090/realms/bazaar/protocol/openid-connect/token
+```
+
+`requests.http` has the same request and stores the token for the protected calls below it.
 
 A service validates a token in two steps, each with its own setting in `config-repo/application.yaml`:
 

@@ -11,6 +11,18 @@ GET http://localhost:8080/api/categories
 ###
 GET http://localhost:8080/api/products
 ###
+
+# Keycloak: token for the customer test user (use admin / admin for the admin)
+POST http://localhost:9090/realms/bazaar/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=bazaar-web&grant_type=password&username=customer&password=customer
+
+> {% client.global.set("token", response.body.access_token); %}
+###
+
+# API gateway, protected (run the token request first)
 GET http://localhost:8080/api/inventory
+Authorization: Bearer {{token}}
 ###
 
