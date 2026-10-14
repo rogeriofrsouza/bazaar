@@ -49,6 +49,7 @@
         }
       ],
       "realmRoles": [
+        "default-roles-bazaar",
         "customer"
       ]
     },
@@ -67,6 +68,7 @@
         }
       ],
       "realmRoles": [
+        "default-roles-bazaar",
         "admin"
       ]
     }
