@@ -1,4 +1,4 @@
-package com.rogeriofrsouza.bazaar.inventory;
+package com.rogeriofrsouza.bazaar.inventory.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;

@@ -1,4 +1,4 @@
-package com.rogeriofrsouza.bazaar.order;
+package com.rogeriofrsouza.bazaar.inventory.config;
 
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;

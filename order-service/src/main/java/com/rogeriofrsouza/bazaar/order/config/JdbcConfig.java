@@ -1,4 +1,4 @@
-package com.rogeriofrsouza.bazaar.order;
+package com.rogeriofrsouza.bazaar.order.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jdbc.repository.config.EnableJdbcAuditing;
