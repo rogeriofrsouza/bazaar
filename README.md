@@ -129,7 +129,7 @@ All servers run on virtual threads (`spring.threads.virtual.enabled`): the share
 
 ### Config server
 
-`config-server` runs Spring Cloud Config with the `native` (filesystem) backend. It serves the files in `CONFIG_SEARCH_LOCATIONS` (default `file:../config-repo/`, relative to the `config-server` module directory, which is the working directory when run from the IDE or Maven): `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The files are read on every request, so edits take effect without a restart (services pick them up on their next startup or refresh). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo` and sets `CONFIG_SEARCH_LOCATIONS` from `docker/.env`.
+`config-server` runs Spring Cloud Config with the `native` (filesystem) backend. It serves the files in `CONFIG_SEARCH_LOCATIONS` (default `file:./config-repo/,file:../config-repo/`, relative to the working directory, so it finds the folder both from the repository root, where IntelliJ runs it, and from the `config-server` module directory, where Maven runs it): `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The files are read on every request, so edits take effect without a restart (services pick them up on their next startup or refresh). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo` and sets `CONFIG_SEARCH_LOCATIONS` from `docker/.env`.
 
 ### Discovery server
 

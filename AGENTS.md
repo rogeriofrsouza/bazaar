@@ -42,7 +42,7 @@ docker/keycloak/     # bazaar realm (roles, bazaar-web client, test users), impo
 
 ## Configuration and Docker
 
-- Service settings live in `config-repo/` at the repository root: `application.yaml` for shared settings, `<service>.yaml` for one service. `config-server` reads them from the filesystem with the `native` profile (`CONFIG_SEARCH_LOCATIONS`, default `file:../config-repo/`, relative to the module directory; in Docker the folder is mounted read-only at `/config-repo`), so edits take effect without a push or restart. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
+- Service settings live in `config-repo/` at the repository root: `application.yaml` for shared settings, `<service>.yaml` for one service. `config-server` reads them from the filesystem with the `native` profile (`CONFIG_SEARCH_LOCATIONS`, default `file:./config-repo/,file:../config-repo/`, relative to the working directory, which is the repository root when run from IntelliJ and the module directory when run from Maven; in Docker the folder is mounted read-only at `/config-repo`), so edits take effect without a push or restart. A service's own `application.yaml` holds only `spring.application.name` and the config-client settings (`optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`, `fail-fast`).
 - Config files read connection settings from env vars with **localhost defaults**, e.g. `url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}`. The client resolves the placeholders. Running from the IDE needs no profile. Containers and deployed environments override the env vars.
 - There is no `spring-boot-docker-compose` and no `local` profile. Don't reintroduce them.
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
@@ -61,7 +61,7 @@ docker/keycloak/     # bazaar realm (roles, bazaar-web client, test users), impo
 - Container images in tests match the ones in `docker/infra.yml` (e.g. `postgres:18-alpine`).
 - Tests never start Keycloak. Each service has a `<Name>SecurityTests` (`@SpringBootTest` + `@AutoConfigureMockMvc`) that checks its access rules with `MockMvcTester` and `SecurityMockMvcRequestPostProcessors.jwt()`: 401 without a token, the controller's own status with one.
 - Each service has `src/test/resources/config/application.yaml` that sets `spring.cloud.config.enabled: false` and `eureka.client.enabled: false`, so tests need no config or discovery server. It holds copies of the `config-repo/` settings tests rely on (`server.port`, shared `spring.mvc` settings, the `spring.security.oauth2.resourceserver.jwt` URIs, without which there is no `JwtDecoder` and the context fails to start), but not the datasource, which comes from `@ServiceConnection`. Keep these copies in sync when the shared settings change.
-- `config-server`, `discovery-server` and `api-gateway` have no containers, so they only have a plain `@SpringBootTest` context-load test.
+- `discovery-server` and `api-gateway` have no containers, so they only have a plain `@SpringBootTest` context-load test. `config-server` has none either; its `ConfigServerApplicationTests` starts on a random port and checks over HTTP that it serves `config-repo/`.
 
 ## Adding a new microservice
 

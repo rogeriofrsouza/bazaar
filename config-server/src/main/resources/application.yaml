@@ -13,4 +13,4 @@ spring:
     config:
       server:
         native:
-          search-locations: ${CONFIG_SEARCH_LOCATIONS:file:../config-repo/}
+          search-locations: ${CONFIG_SEARCH_LOCATIONS:file:./config-repo/,file:../config-repo/}
