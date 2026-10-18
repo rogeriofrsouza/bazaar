@@ -25,4 +25,7 @@ client_id=bazaar-web&grant_type=password&username=customer&password=customer
 GET http://localhost:8080/api/inventory
 Authorization: Bearer {{token}}
 ###
+GET http://localhost:8080/api/customers/me
+Authorization: Bearer {{token}}
+###
 

@@ -146,6 +146,7 @@ All servers run on virtual threads (`spring.threads.virtual.enabled`): the share
 | `/api/products/**`, `/api/categories/**` | `catalog-service`   |
 | `/api/inventory/**`                      | `inventory-service` |
 | `/api/orders/**`                         | `order-service`     |
+| `/api/customers/**`                      | `customer-service`  |
 | `/<service>/v3/api-docs`                 | `<service>`         |
 
 The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), since a YAML `lb://` URI can't take the service name from the path.
@@ -197,6 +198,8 @@ docker compose -f docker/infra.yml up -d
 | Everything else, including writes on products         | Valid token (401 otherwise) |
 
 Only the `GET` method is opened on the public paths, so an endpoint added later needs a token unless `SecurityConfig` opens it. Roles are not checked yet.
+
+`/api/customers/me` acts on the profile of the token's owner: `customer-service` stores the token's `sub` claim with each profile and looks the profile up by it, so a caller reads and writes only their own. `POST` creates the profile (409 if it already exists), `GET` and `PUT` return 404 until then.
 
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 
