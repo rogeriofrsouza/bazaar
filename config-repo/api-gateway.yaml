@@ -29,3 +29,5 @@ springdoc:
         url: /inventory-service/v3/api-docs
       - name: order-service
         url: /order-service/v3/api-docs
+      - name: customer-service
+        url: /customer-service/v3/api-docs

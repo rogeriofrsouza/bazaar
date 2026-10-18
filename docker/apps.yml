@@ -97,3 +97,25 @@ services:
         condition: service_started
       discovery-server:
         condition: service_started
+
+  customer-service:
+    container_name: customer-service
+    image: rogeriofrsouza/bazaar-customer-service
+    restart: on-failure
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: ${CUSTOMER_DB_URL}
+      DB_USERNAME: ${CUSTOMER_DB_USERNAME}
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD}
+      CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
+      JWT_ISSUER_URI: ${KEYCLOAK_ISSUER_URI}
+      JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI}
+    depends_on:
+      customer-service-db:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      discovery-server:
+        condition: service_started

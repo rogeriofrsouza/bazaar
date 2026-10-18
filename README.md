@@ -20,6 +20,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 | `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                                            |
 | `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                                      |
 | `order-service`     | 8083 | `order-service-db` (host port 5434)     | Orders and checkout                                                |
+| `customer-service`  | 8084 | `customer-service-db` (host port 5436)  | Customer profiles                                                  |
 
 ## Project structure
 
@@ -32,6 +33,7 @@ bazaar/
 ├── catalog-service/     # Catalog microservice
 ├── inventory-service/   # Inventory microservice
 ├── order-service/       # Order microservice
+├── customer-service/    # Customer microservice
 └── docker/
     ├── .env             # Variables used by the compose files
     ├── infra.yml        # Infrastructure (databases, Keycloak, ...)
@@ -81,7 +83,7 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl config-server,discovery-server,api-gateway,catalog-service,inventory-service,order-service spring-boot:build-image -DskipTests
+   ./mvnw -pl config-server,discovery-server,api-gateway,catalog-service,inventory-service,order-service,customer-service spring-boot:build-image -DskipTests
    ```
    Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
 2. Start infrastructure and apps:
@@ -111,11 +113,11 @@ Service settings live in `config-repo/` and are served by `config-server` (see b
 
 The `<service>.yaml` files in `config-repo/` read connection settings from environment variables, falling back to local defaults that match the ports published by `infra.yml`. The placeholders are resolved by the service, not the config server, so the variables are set on the service:
 
-| Variable      | `catalog-service` default                  | `inventory-service` default                  | `order-service` default                   |
-|---------------|--------------------------------------------|----------------------------------------------|-------------------------------------------|
-| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` | `jdbc:postgresql://localhost:5434/orders` |
-| `DB_USERNAME` | `catalog`                                  | `inventory`                                  | `orders`                                  |
-| `DB_PASSWORD` | `catalog`                                  | `inventory`                                  | `orders`                                  |
+| Variable      | `catalog-service` default                  | `inventory-service` default                  | `order-service` default                   | `customer-service` default                  |
+|---------------|--------------------------------------------|----------------------------------------------|-------------------------------------------|---------------------------------------------|
+| `DB_URL`      | `jdbc:postgresql://localhost:5432/catalog` | `jdbc:postgresql://localhost:5433/inventory` | `jdbc:postgresql://localhost:5434/orders` | `jdbc:postgresql://localhost:5436/customer` |
+| `DB_USERNAME` | `catalog`                                  | `inventory`                                  | `orders`                                  | `customer`                                  |
+| `DB_PASSWORD` | `catalog`                                  | `inventory`                                  | `orders`                                  | `customer`                                  |
 
 `CONFIG_SERVER_URL` (default `http://localhost:8888`) points each service at the config server. Services fail fast if the config server can't be reached; in Docker, `restart: on-failure` restarts them until it is up.
 
@@ -186,7 +188,7 @@ docker compose -f docker/infra.yml up -d
 
 ### Security
 
-`catalog-service`, `inventory-service` and `order-service` are OAuth2 resource servers: they accept a JWT access token issued by the `bazaar` realm, sent as `Authorization: Bearer <token>`. The gateway forwards the header unchanged. Each service declares its rules in its own `SecurityConfig`:
+`catalog-service`, `inventory-service`, `order-service` and `customer-service` are OAuth2 resource servers: they accept a JWT access token issued by the `bazaar` realm, sent as `Authorization: Bearer <token>`. The gateway forwards the header unchanged. Each service declares its rules in its own `SecurityConfig`:
 
 | Request                                               | Access                      |
 |-------------------------------------------------------|-----------------------------|

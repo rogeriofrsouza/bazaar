@@ -1,0 +1,8 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5436/customer}
+    username: ${DB_USERNAME:customer}
+    password: ${DB_PASSWORD:customer}
