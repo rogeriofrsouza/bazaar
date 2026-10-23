@@ -33,7 +33,7 @@ class OrderPersistenceTests {
     void savesAndLoadsOrderWithItems() {
         UUID keyboard = UUID.randomUUID();
         UUID mouse = UUID.randomUUID();
-        Order placed = orderRepository.save(Order.place(List.of(
+        Order placed = orderRepository.save(Order.place("subject-1", List.of(
                 OrderItem.create(keyboard, "Keyboard", new BigDecimal("150.00"), 2),
                 OrderItem.create(mouse, "Mouse", new BigDecimal("49.90"), 1)
         )));
@@ -41,6 +41,7 @@ class OrderPersistenceTests {
         Order order = orderRepository.findById(placed.getId()).orElseThrow();
 
         assertThat(order.getId().version()).isEqualTo(7);
+        assertThat(order.getCustomerSubject()).isEqualTo("subject-1");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.getTotal()).isEqualByComparingTo("349.90");
         assertThat(order.getCreatedAt()).isNotNull();
@@ -60,7 +61,7 @@ class OrderPersistenceTests {
 
     @Test
     void resavingLoadedOrderKeepsItems() {
-        Order placed = orderRepository.save(Order.place(List.of(
+        Order placed = orderRepository.save(Order.place("subject-1", List.of(
                 OrderItem.create(UUID.randomUUID(), "Monitor", new BigDecimal("900.00"), 1),
                 OrderItem.create(UUID.randomUUID(), "Cable", new BigDecimal("9.99"), 3)
         )));

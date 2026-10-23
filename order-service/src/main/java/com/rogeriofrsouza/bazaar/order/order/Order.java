@@ -21,6 +21,8 @@ public class Order {
     @Id
     private final UUID id;
 
+    private final String customerSubject;
+
     private final OrderStatus status;
 
     private final BigDecimal total;
@@ -39,15 +41,18 @@ public class Order {
 
     public Order(
             UUID id,
+            String customerSubject,
             OrderStatus status,
             BigDecimal total,
             Set<OrderItem> items,
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
+        Assert.hasText(customerSubject, "Customer subject must not be blank");
         Assert.notEmpty(items, "An order needs at least one item");
         Assert.isTrue(total.compareTo(sumOfSubtotals(items)) == 0, "Order total must match its items");
         this.id = id;
+        this.customerSubject = customerSubject;
         this.status = status;
         this.total = total;
         this.items = Set.copyOf(items);
@@ -55,10 +60,11 @@ public class Order {
         this.updatedAt = updatedAt;
     }
 
-    public static Order place(List<OrderItem> items) {
+    public static Order place(String customerSubject, List<OrderItem> items) {
         Set<OrderItem> itemSet = Set.copyOf(items);
         return new Order(
                 UUID.ofEpochMillis(System.currentTimeMillis()),
+                customerSubject,
                 OrderStatus.PENDING,
                 sumOfSubtotals(itemSet),
                 itemSet,
@@ -75,6 +81,10 @@ public class Order {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getCustomerSubject() {
+        return customerSubject;
     }
 
     public OrderStatus getStatus() {

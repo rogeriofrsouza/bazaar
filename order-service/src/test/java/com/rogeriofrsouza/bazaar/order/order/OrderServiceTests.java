@@ -41,14 +41,14 @@ class OrderServiceTests {
                 new CatalogProduct(mouse, "Mouse", new BigDecimal("49.90"))
         ));
 
-        OrderResponse placed = orderService.place(new CreateOrderRequest(List.of(
+        OrderResponse placed = orderService.place("subject-1", new CreateOrderRequest(List.of(
                 new OrderItemRequest(keyboard, 2),
                 new OrderItemRequest(mouse, 1)
         )));
 
         assertThat(placed.id().version()).isEqualTo(7);
 
-        OrderResponse order = orderService.findById(placed.id());
+        OrderResponse order = orderService.findById(placed.id(), "subject-1");
 
         assertThat(order.status()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.total()).isEqualByComparingTo("349.90");
@@ -74,7 +74,7 @@ class OrderServiceTests {
                 new OrderItemRequest(unknown, 1)
         ));
 
-        assertThatThrownBy(() -> orderService.place(request))
+        assertThatThrownBy(() -> orderService.place("subject-1", request))
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(ex.getReason()).contains(unknown.toString());
@@ -82,8 +82,24 @@ class OrderServiceTests {
     }
 
     @Test
+    void hidesOrdersOfOtherCustomers() {
+        UUID cable = UUID.randomUUID();
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct(cable, "Cable", new BigDecimal("9.99"))
+        ));
+
+        OrderResponse placed = orderService.place("subject-1", new CreateOrderRequest(List.of(
+                new OrderItemRequest(cable, 1)
+        )));
+
+        assertThatThrownBy(() -> orderService.findById(placed.id(), "subject-2"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
     void failsWhenOrderDoesNotExist() {
-        assertThatThrownBy(() -> orderService.findById(UUID.randomUUID()))
+        assertThatThrownBy(() -> orderService.findById(UUID.randomUUID(), "subject-1"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }

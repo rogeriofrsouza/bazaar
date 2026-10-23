@@ -20,11 +20,12 @@ class OrderTests {
         OrderItem keyboard = OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 2);
         OrderItem mouse = OrderItem.create(UUID.randomUUID(), "Mouse", new BigDecimal("49.90"), 1);
 
-        Order order = Order.place(List.of(keyboard, mouse));
+        Order order = Order.place("subject-1", List.of(keyboard, mouse));
 
         assertThat(order.getId().version()).isEqualTo(7);
         assertThat(Instant.ofEpochMilli(order.getId().getMostSignificantBits() >>> 16))
                 .isCloseTo(Instant.now(), within(1, ChronoUnit.MINUTES));
+        assertThat(order.getCustomerSubject()).isEqualTo("subject-1");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.getTotal()).isEqualByComparingTo("349.90");
         assertThat(order.getItems()).containsExactlyInAnyOrder(keyboard, mouse);
@@ -33,8 +34,16 @@ class OrderTests {
 
     @Test
     void rejectsEmptyOrder() {
-        assertThatIllegalArgumentException().isThrownBy(() -> Order.place(List.of()))
+        assertThatIllegalArgumentException().isThrownBy(() -> Order.place("subject-1", List.of()))
                 .withMessage("An order needs at least one item");
+    }
+
+    @Test
+    void rejectsBlankCustomerSubject() {
+        OrderItem item = OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 1);
+
+        assertThatIllegalArgumentException().isThrownBy(() -> Order.place(" ", List.of(item)))
+                .withMessage("Customer subject must not be blank");
     }
 
     @Test
@@ -42,8 +51,8 @@ class OrderTests {
         OrderItem item = OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 2);
 
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new Order(UUID.randomUUID(), OrderStatus.PENDING, new BigDecimal("150.00"),
-                        Set.of(item), null, null))
+                .isThrownBy(() -> new Order(UUID.randomUUID(), "subject-1", OrderStatus.PENDING,
+                        new BigDecimal("150.00"), Set.of(item), null, null))
                 .withMessage("Order total must match its items");
     }
 

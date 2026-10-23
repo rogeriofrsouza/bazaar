@@ -1,12 +1,15 @@
 CREATE TABLE orders
 (
-    id         uuid PRIMARY KEY,
-    status     varchar(20)    NOT NULL,
-    total      numeric(12, 2) NOT NULL,
-    version    bigint         NOT NULL,
-    created_at timestamptz    NOT NULL DEFAULT NOW(),
-    updated_at timestamptz    NOT NULL DEFAULT NOW()
+    id               uuid PRIMARY KEY,
+    customer_subject varchar(255)   NOT NULL,
+    status           varchar(20)    NOT NULL,
+    total            numeric(12, 2) NOT NULL,
+    version          bigint         NOT NULL,
+    created_at       timestamptz    NOT NULL DEFAULT NOW(),
+    updated_at       timestamptz    NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX idx_orders_customer_subject ON orders (customer_subject);
 
 CREATE TABLE order_item
 (

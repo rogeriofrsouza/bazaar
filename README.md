@@ -201,6 +201,8 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 
 `/api/customers/me` acts on the profile of the token's owner: `customer-service` stores the token's `sub` claim with each profile and looks the profile up by it, so a caller reads and writes only their own. `POST` creates the profile (409 if it already exists), `GET` and `PUT` return 404 until then. `/api/customers/me/addresses` lists, adds, updates and deletes the caller's addresses (`/{addressId}` for a single one), with the same 404 until the profile exists.
 
+`/api/orders` works the same way: `order-service` stores the token's `sub` with each order it places, and `GET /api/orders/{id}` returns 404 for an order that belongs to someone else, as it does for one that doesn't exist.
+
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 
 ```sh

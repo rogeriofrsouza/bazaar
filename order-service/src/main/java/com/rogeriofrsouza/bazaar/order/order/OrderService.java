@@ -26,15 +26,15 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse findById(UUID id) {
-        return orderRepository.findById(id)
+    public OrderResponse findById(UUID id, String customerSubject) {
+        return orderRepository.findByIdAndCustomerSubject(id, customerSubject)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Order " + id + " not found"));
     }
 
     @Transactional
-    public OrderResponse place(CreateOrderRequest request) {
+    public OrderResponse place(String customerSubject, CreateOrderRequest request) {
         Set<UUID> productIds = request.items()
                 .stream()
                 .map(OrderItemRequest::productId)
@@ -61,7 +61,7 @@ public class OrderService {
                 })
                 .toList();
 
-        Order order = Order.place(items);
+        Order order = Order.place(customerSubject, items);
         return OrderResponse.from(orderRepository.save(order));
     }
 }
