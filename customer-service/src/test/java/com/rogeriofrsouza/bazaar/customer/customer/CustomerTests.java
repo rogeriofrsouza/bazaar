@@ -4,8 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.within;
 
@@ -117,5 +119,28 @@ class CustomerTests {
 
         assertThat(customer.getAddresses()).isEmpty();
         assertThat(customer.findAddress(address.getId())).isEmpty();
+    }
+
+    @Test
+    void updateAddressRejectsUnknownId() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+        Address address = customer.addAddress("221B Baker Street", null, "London", "England", "NW1 6XE", "GB");
+        UUID unknownId = UUID.randomUUID();
+
+        assertThatExceptionOfType(AddressNotFoundException.class)
+                .isThrownBy(() -> customer.updateAddress(
+                        unknownId, "10 Downing Street", null, "London", "England", "SW1A 2AA", "GB"))
+                .withMessage("Address " + unknownId + " not found");
+        assertThat(customer.getAddresses()).containsExactly(address);
+    }
+
+    @Test
+    void removeAddressRejectsUnknownId() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+        Address address = customer.addAddress("221B Baker Street", null, "London", "England", "NW1 6XE", "GB");
+
+        assertThatExceptionOfType(AddressNotFoundException.class)
+                .isThrownBy(() -> customer.removeAddress(UUID.randomUUID()));
+        assertThat(customer.getAddresses()).containsExactly(address);
     }
 }

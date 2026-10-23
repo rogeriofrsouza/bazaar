@@ -116,8 +116,9 @@ public class Customer {
     }
 
     public void removeAddress(UUID addressId) {
-        Assert.isTrue(
-                addresses.removeIf(address -> address.getId().equals(addressId)), "Address not found");
+        if (!addresses.removeIf(address -> address.getId().equals(addressId))) {
+            throw new AddressNotFoundException(addressId);
+        }
     }
 
     private static void requireProfile(String firstName, String lastName, String email) {

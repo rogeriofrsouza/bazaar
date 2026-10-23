@@ -55,7 +55,7 @@ public class CustomerService {
         Customer customer = find(subject);
         return customer.findAddress(addressId)
                 .map(AddressResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+                .orElseThrow(() -> new AddressNotFoundException(addressId));
     }
 
     @Transactional
@@ -73,8 +73,6 @@ public class CustomerService {
     @Transactional
     public AddressResponse updateAddress(String subject, UUID addressId, UpdateAddressRequest request) {
         Customer customer = find(subject);
-        customer.findAddress(addressId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
 
         Address address = customer.updateAddress(
                 addressId, request.line1(), request.line2(), request.city(),
@@ -88,9 +86,6 @@ public class CustomerService {
     @Transactional
     public void removeAddress(String subject, UUID addressId) {
         Customer customer = find(subject);
-        customer.findAddress(addressId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
-
         customer.removeAddress(addressId);
         customerRepository.save(customer);
     }

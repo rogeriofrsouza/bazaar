@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.customer;
 
+import com.rogeriofrsouza.bazaar.customer.customer.AddressNotFoundException;
 import com.rogeriofrsouza.bazaar.customer.customer.AddressResponse;
 import com.rogeriofrsouza.bazaar.customer.customer.CreateAddressRequest;
 import com.rogeriofrsouza.bazaar.customer.customer.CreateCustomerRequest;
@@ -157,16 +158,13 @@ class CustomerPersistenceTests {
         customerService.create(subject, createRequest(null));
         UUID addressId = UUID.randomUUID();
 
-        assertThatExceptionOfType(ResponseStatusException.class)
-                .isThrownBy(() -> customerService.findAddress(subject, addressId))
-                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
-        assertThatExceptionOfType(ResponseStatusException.class)
+        assertThatExceptionOfType(AddressNotFoundException.class)
+                .isThrownBy(() -> customerService.findAddress(subject, addressId));
+        assertThatExceptionOfType(AddressNotFoundException.class)
                 .isThrownBy(() -> customerService.updateAddress(subject, addressId, new UpdateAddressRequest(
-                        "221B Baker Street", null, "London", "England", "NW1 6XE", "GB")))
-                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
-        assertThatExceptionOfType(ResponseStatusException.class)
-                .isThrownBy(() -> customerService.removeAddress(subject, addressId))
-                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+                        "221B Baker Street", null, "London", "England", "NW1 6XE", "GB")));
+        assertThatExceptionOfType(AddressNotFoundException.class)
+                .isThrownBy(() -> customerService.removeAddress(subject, addressId));
     }
 
     @Test
