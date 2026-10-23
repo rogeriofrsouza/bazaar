@@ -20,7 +20,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 | `catalog-service`   | 8081 | `catalog-service-db` (host port 5432)   | Products and categories                                            |
 | `inventory-service` | 8082 | `inventory-service-db` (host port 5433) | Stock levels and reservations                                      |
 | `order-service`     | 8083 | `order-service-db` (host port 5434)     | Orders and checkout                                                |
-| `customer-service`  | 8084 | `customer-service-db` (host port 5436)  | Customer profiles                                                  |
+| `customer-service`  | 8084 | `customer-service-db` (host port 5436)  | Customer profiles and addresses                                    |
 
 ## Project structure
 
@@ -199,7 +199,7 @@ docker compose -f docker/infra.yml up -d
 
 Only the `GET` method is opened on the public paths, so an endpoint added later needs a token unless `SecurityConfig` opens it. Roles are not checked yet.
 
-`/api/customers/me` acts on the profile of the token's owner: `customer-service` stores the token's `sub` claim with each profile and looks the profile up by it, so a caller reads and writes only their own. `POST` creates the profile (409 if it already exists), `GET` and `PUT` return 404 until then.
+`/api/customers/me` acts on the profile of the token's owner: `customer-service` stores the token's `sub` claim with each profile and looks the profile up by it, so a caller reads and writes only their own. `POST` creates the profile (409 if it already exists), `GET` and `PUT` return 404 until then. `/api/customers/me/addresses` lists, adds, updates and deletes the caller's addresses (`/{addressId}` for a single one), with the same 404 until the profile exists.
 
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 

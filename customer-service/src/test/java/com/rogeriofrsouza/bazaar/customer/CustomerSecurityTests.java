@@ -30,6 +30,16 @@ class CustomerSecurityTests {
     }
 
     @Test
+    void readingAddressesNeedsToken() {
+        assertThat(mvc.get().uri("/api/customers/me/addresses")).hasStatus(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void readingAddressesWithTokenReachesController() {
+        assertThat(mvc.get().uri("/api/customers/me/addresses").with(jwt())).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void apiDocsArePublic() {
         assertThat(mvc.get().uri("/v3/api-docs")).hasStatusOk();
     }

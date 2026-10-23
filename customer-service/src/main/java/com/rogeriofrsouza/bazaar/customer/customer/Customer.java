@@ -5,10 +5,11 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.MappedCollection;
 import org.springframework.util.Assert;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.*;
 
 public class Customer {
 
@@ -24,6 +25,9 @@ public class Customer {
     private String email;
 
     private @Nullable String phone;
+
+    @MappedCollection(idColumn = "customer_id")
+    private final Set<Address> addresses;
 
     @Version
     private @Nullable Long version;
@@ -41,6 +45,7 @@ public class Customer {
             String lastName,
             String email,
             @Nullable String phone,
+            Set<Address> addresses,
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
@@ -52,6 +57,7 @@ public class Customer {
         this.lastName = lastName;
         this.email = email;
         this.phone = phone;
+        this.addresses = new HashSet<>(addresses);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -65,6 +71,7 @@ public class Customer {
                 lastName,
                 email,
                 phone,
+                Set.of(),
                 null,
                 null
         );
@@ -76,6 +83,41 @@ public class Customer {
         this.lastName = lastName;
         this.email = email;
         this.phone = phone;
+    }
+
+    public Optional<Address> findAddress(UUID addressId) {
+        return addresses.stream()
+                .filter(address -> address.getId().equals(addressId))
+                .findFirst();
+    }
+
+    public Address addAddress(String line1,
+                              @Nullable String line2,
+                              String city,
+                              String state,
+                              String postalCode,
+                              String country) {
+        Address address = Address.create(line1, line2, city, state, postalCode, country);
+        addresses.add(address);
+        return address;
+    }
+
+    public Address updateAddress(UUID addressId,
+                                 String line1,
+                                 @Nullable String line2,
+                                 String city,
+                                 String state,
+                                 String postalCode,
+                                 String country) {
+        Address address = new Address(addressId, line1, line2, city, state, postalCode, country);
+        removeAddress(addressId);
+        addresses.add(address);
+        return address;
+    }
+
+    public void removeAddress(UUID addressId) {
+        Assert.isTrue(
+                addresses.removeIf(address -> address.getId().equals(addressId)), "Address not found");
     }
 
     private static void requireProfile(String firstName, String lastName, String email) {
@@ -106,6 +148,10 @@ public class Customer {
 
     public @Nullable String getPhone() {
         return phone;
+    }
+
+    public Set<Address> getAddresses() {
+        return Collections.unmodifiableSet(addresses);
     }
 
     public @Nullable Instant getCreatedAt() {

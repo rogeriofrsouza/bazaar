@@ -1,10 +1,13 @@
 package com.rogeriofrsouza.bazaar.customer;
 
+import com.rogeriofrsouza.bazaar.customer.customer.AddressResponse;
+import com.rogeriofrsouza.bazaar.customer.customer.CreateAddressRequest;
 import com.rogeriofrsouza.bazaar.customer.customer.CreateCustomerRequest;
 import com.rogeriofrsouza.bazaar.customer.customer.Customer;
 import com.rogeriofrsouza.bazaar.customer.customer.CustomerRepository;
 import com.rogeriofrsouza.bazaar.customer.customer.CustomerResponse;
 import com.rogeriofrsouza.bazaar.customer.customer.CustomerService;
+import com.rogeriofrsouza.bazaar.customer.customer.UpdateAddressRequest;
 import com.rogeriofrsouza.bazaar.customer.customer.UpdateCustomerRequest;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -106,12 +109,88 @@ class CustomerPersistenceTests {
                 .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
 
+    @Test
+    void addsAndReadsAddresses() {
+        String subject = subject();
+        customerService.create(subject, createRequest(null));
+
+        AddressResponse first = customerService.addAddress(subject, addressRequest("221B Baker Street", null));
+        AddressResponse second = customerService.addAddress(subject, addressRequest("10 Downing Street", "Flat 1"));
+
+        assertThat(first.id().version()).isEqualTo(7);
+        assertThat(first.line2()).isNull();
+        assertThat(second.line2()).isEqualTo("Flat 1");
+        assertThat(customerService.listAddresses(subject)).containsExactlyInAnyOrder(first, second);
+        assertThat(customerService.findAddress(subject, second.id())).isEqualTo(second);
+    }
+
+    @Test
+    void persistsAddressChanges() {
+        String subject = subject();
+        customerService.create(subject, createRequest(null));
+        AddressResponse added = customerService.addAddress(subject, addressRequest("221B Baker Street", null));
+
+        AddressResponse updated = customerService.updateAddress(subject, added.id(),
+                new UpdateAddressRequest("Rua Augusta 100", "Apto 12", "São Paulo", "SP", "01304-000", "BR"));
+
+        assertThat(updated).isEqualTo(new AddressResponse(
+                added.id(), "Rua Augusta 100", "Apto 12", "São Paulo", "SP", "01304-000", "BR"));
+        assertThat(customerService.listAddresses(subject)).containsExactly(updated);
+        assertThat(versionOf(subject)).isEqualTo(2);
+    }
+
+    @Test
+    void removesAddress() {
+        String subject = subject();
+        customerService.create(subject, createRequest(null));
+        AddressResponse removed = customerService.addAddress(subject, addressRequest("221B Baker Street", null));
+        AddressResponse kept = customerService.addAddress(subject, addressRequest("10 Downing Street", null));
+
+        customerService.removeAddress(subject, removed.id());
+
+        assertThat(customerService.listAddresses(subject)).containsExactly(kept);
+    }
+
+    @Test
+    void failsForUnknownAddress() {
+        String subject = subject();
+        customerService.create(subject, createRequest(null));
+        UUID addressId = UUID.randomUUID();
+
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> customerService.findAddress(subject, addressId))
+                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> customerService.updateAddress(subject, addressId, new UpdateAddressRequest(
+                        "221B Baker Street", null, "London", "England", "NW1 6XE", "GB")))
+                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> customerService.removeAddress(subject, addressId))
+                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void failsForAddressesOfSubjectWithoutProfile() {
+        String subject = subject();
+
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> customerService.listAddresses(subject))
+                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> customerService.addAddress(subject, addressRequest("221B Baker Street", null)))
+                .satisfies(ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
     private static String subject() {
         return UUID.randomUUID().toString();
     }
 
     private static CreateCustomerRequest createRequest(@Nullable String phone) {
         return new CreateCustomerRequest("Ada", "Lovelace", "ada@example.com", phone);
+    }
+
+    private static CreateAddressRequest addressRequest(String line1, @Nullable String line2) {
+        return new CreateAddressRequest(line1, line2, "London", "England", "NW1 6XE", "GB");
     }
 
     private Long versionOf(String subject) {

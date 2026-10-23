@@ -61,4 +61,61 @@ class CustomerTests {
                 .withMessage("Email must not be blank");
         assertThat(customer.getEmail()).isEqualTo("ada@example.com");
     }
+
+    @Test
+    void addAddressGeneratesUuidV7Id() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+
+        Address address = customer.addAddress("221B Baker Street", null, "London", "England", "NW1 6XE", "GB");
+
+        assertThat(address.getId().version()).isEqualTo(7);
+        assertThat(customer.getAddresses()).containsExactly(address);
+        assertThat(customer.findAddress(address.getId())).containsSame(address);
+    }
+
+    @Test
+    void addAddressRejectsBlankLine1() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> customer.addAddress(" ", null, "London", "England", "NW1 6XE", "GB"))
+                .withMessage("Address line 1 must not be blank");
+        assertThat(customer.getAddresses()).isEmpty();
+    }
+
+    @Test
+    void addAddressRejectsCountryThatIsNotTwoLetters() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> customer.addAddress(
+                        "221B Baker Street", null, "London", "England", "NW1 6XE", "GBR"))
+                .withMessage("Country must be an ISO 3166-1 alpha-2 code");
+    }
+
+    @Test
+    void updateAddressKeepsId() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+        Address address = customer.addAddress("221B Baker Street", null, "London", "England", "NW1 6XE", "GB");
+
+        Address updated = customer.updateAddress(
+                address.getId(), "10 Downing Street", "Flat 1", "London", "England", "SW1A 2AA", "GB");
+
+        assertThat(updated.getId()).isEqualTo(address.getId());
+        assertThat(updated.getLine1()).isEqualTo("10 Downing Street");
+        assertThat(updated.getLine2()).isEqualTo("Flat 1");
+        assertThat(updated.getPostalCode()).isEqualTo("SW1A 2AA");
+        assertThat(customer.getAddresses()).containsExactly(updated);
+    }
+
+    @Test
+    void removeAddressDropsIt() {
+        Customer customer = Customer.create("subject-1", "Ada", "Lovelace", "ada@example.com", null);
+        Address address = customer.addAddress("221B Baker Street", null, "London", "England", "NW1 6XE", "GB");
+
+        customer.removeAddress(address.getId());
+
+        assertThat(customer.getAddresses()).isEmpty();
+        assertThat(customer.findAddress(address.getId())).isEmpty();
+    }
 }
