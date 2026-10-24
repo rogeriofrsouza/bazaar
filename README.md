@@ -203,6 +203,8 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 
 `/api/orders` works the same way: `order-service` stores the token's `sub` with each order it places. `GET /api/orders` lists the caller's orders, newest first and paged (`page`, `size`, `sort`), and `GET /api/orders/{id}` returns 404 for an order that belongs to someone else, as it does for one that doesn't exist.
 
+`POST /api/orders` reserves the stock for every item through `POST /api/inventory/reservations` before it saves the order, sending the caller's token on to `inventory-service`. If any item is short or has no inventory, nothing is reserved and the order fails with 409. If `inventory-service` fails or can't be reached, it fails with 502. If the order then can't be saved, the reservation is released.
+
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 
 ```sh

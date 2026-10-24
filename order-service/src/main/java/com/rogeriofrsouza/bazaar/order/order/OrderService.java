@@ -2,6 +2,11 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
+import com.rogeriofrsouza.bazaar.order.inventory.InventoryClient;
+import com.rogeriofrsouza.bazaar.order.inventory.ReservationRequest;
+import com.rogeriofrsouza.bazaar.order.inventory.ReservationRequest.ReservationItemRequest;
+import com.rogeriofrsouza.bazaar.order.inventory.StockReservedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,10 +26,15 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CatalogClient catalogClient;
+    private final InventoryClient inventoryClient;
+    private final ApplicationEventPublisher eventPublisher;
 
-    OrderService(OrderRepository orderRepository, CatalogClient catalogClient) {
+    OrderService(OrderRepository orderRepository, CatalogClient catalogClient, InventoryClient inventoryClient,
+                 ApplicationEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.catalogClient = catalogClient;
+        this.inventoryClient = inventoryClient;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -68,6 +78,14 @@ public class OrderService {
                     return OrderItem.create(product.id(), product.name(), product.price(), item.quantity());
                 })
                 .toList();
+
+        ReservationRequest reservation = new ReservationRequest(
+                items.stream()
+                        .map(item -> new ReservationItemRequest(item.getProductId(), item.getQuantity()))
+                        .toList());
+
+        inventoryClient.reserve(reservation);
+        eventPublisher.publishEvent(new StockReservedEvent(reservation));
 
         Order order = Order.place(customerSubject, items);
         return OrderResponse.from(orderRepository.save(order));
