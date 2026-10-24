@@ -51,6 +51,16 @@ class InventoryItemController {
         return ResponseEntity.created(location).body(item);
     }
 
+    @PostMapping("/reservations")
+    List<InventoryItemResponse> reserveAll(@Valid @RequestBody ReservationRequest request) {
+        return inventoryItemService.reserveAll(request);
+    }
+
+    @PostMapping("/reservations/release")
+    List<InventoryItemResponse> releaseAll(@Valid @RequestBody ReservationRequest request) {
+        return inventoryItemService.releaseAll(request);
+    }
+
     @PostMapping("/{productId}/restock")
     InventoryItemResponse restock(@PathVariable UUID productId,
                                   @Valid @RequestBody QuantityRequest request) {

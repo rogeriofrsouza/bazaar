@@ -6,6 +6,8 @@ import com.rogeriofrsouza.bazaar.inventory.item.InventoryItem;
 import com.rogeriofrsouza.bazaar.inventory.item.InventoryItemRepository;
 import com.rogeriofrsouza.bazaar.inventory.item.InventoryItemResponse;
 import com.rogeriofrsouza.bazaar.inventory.item.InventoryItemService;
+import com.rogeriofrsouza.bazaar.inventory.item.ReservationRequest;
+import com.rogeriofrsouza.bazaar.inventory.item.ReservationRequest.ReservationItemRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -98,6 +100,68 @@ class InventoryPersistenceTests {
         assertThat(inventoryItemService.findByProductId(productId))
                 .isEqualTo(new InventoryItemResponse(productId, 3, 0, 3));
         assertThat(versionOf(productId)).isZero();
+    }
+
+    @Test
+    void reservesAndReleasesAllItems() {
+        UUID keyboard = inventoryItemService.create(request(10)).productId();
+        UUID mouse = inventoryItemService.create(request(5)).productId();
+
+        List<InventoryItemResponse> reserved = inventoryItemService.reserveAll(new ReservationRequest(List.of(
+                new ReservationItemRequest(keyboard, 2),
+                new ReservationItemRequest(mouse, 1),
+                new ReservationItemRequest(keyboard, 3)
+        )));
+
+        assertThat(reserved).containsExactlyInAnyOrder(
+                new InventoryItemResponse(keyboard, 10, 5, 5),
+                new InventoryItemResponse(mouse, 5, 1, 4)
+        );
+
+        inventoryItemService.releaseAll(new ReservationRequest(List.of(
+                new ReservationItemRequest(keyboard, 5),
+                new ReservationItemRequest(mouse, 1)
+        )));
+
+        assertThat(inventoryItemService.findByProductId(keyboard))
+                .isEqualTo(new InventoryItemResponse(keyboard, 10, 0, 10));
+        assertThat(inventoryItemService.findByProductId(mouse))
+                .isEqualTo(new InventoryItemResponse(mouse, 5, 0, 5));
+    }
+
+    @Test
+    void reservesNothingWhenOneItemIsShort() {
+        UUID keyboard = inventoryItemService.create(request(10)).productId();
+        UUID mouse = inventoryItemService.create(request(1)).productId();
+
+        assertThatExceptionOfType(InsufficientStockException.class)
+                .isThrownBy(() -> inventoryItemService.reserveAll(new ReservationRequest(List.of(
+                        new ReservationItemRequest(keyboard, 2),
+                        new ReservationItemRequest(mouse, 2)
+                ))));
+
+        assertThat(inventoryItemService.findByProductId(keyboard))
+                .isEqualTo(new InventoryItemResponse(keyboard, 10, 0, 10));
+        assertThat(versionOf(keyboard)).isZero();
+        assertThat(versionOf(mouse)).isZero();
+    }
+
+    @Test
+    void reservesNothingWhenOneItemIsMissing() {
+        UUID keyboard = inventoryItemService.create(request(10)).productId();
+        UUID unknown = UUID.randomUUID();
+
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> inventoryItemService.reserveAll(new ReservationRequest(List.of(
+                        new ReservationItemRequest(keyboard, 2),
+                        new ReservationItemRequest(unknown, 1)
+                ))))
+                .satisfies(ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(ex.getReason()).contains(unknown.toString());
+                });
+
+        assertThat(versionOf(keyboard)).isZero();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.inventory.item;
 
+import com.rogeriofrsouza.bazaar.inventory.item.ReservationRequest.ReservationItemRequest;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,9 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.ObjIntConsumer;
+import java.util.stream.Collectors;
 
 import static com.rogeriofrsouza.bazaar.inventory.item.InventoryItemCriteria.productIdIn;
 
@@ -85,6 +86,48 @@ public class InventoryItemService {
         InventoryItem item = findForUpdate(productId);
         item.fulfil(quantity);
         return InventoryItemResponse.from(inventoryItemRepository.save(item));
+    }
+
+    @Transactional
+    public List<InventoryItemResponse> reserveAll(ReservationRequest request) {
+        return changeAll(request, InventoryItem::reserve);
+    }
+
+    @Transactional
+    public List<InventoryItemResponse> releaseAll(ReservationRequest request) {
+        return changeAll(request, InventoryItem::release);
+    }
+
+    private List<InventoryItemResponse> changeAll(ReservationRequest request,
+                                                  ObjIntConsumer<InventoryItem> inventoryModifier) {
+        Map<UUID, Integer> quantities = request.items()
+                .stream()
+                .collect(Collectors.toMap(ReservationItemRequest::productId, ReservationItemRequest::quantity, Integer::sum));
+
+        List<InventoryItem> items =
+                inventoryItemRepository.findAllWithLockByProductIdInOrderByProductId(quantities.keySet());
+
+        if (items.size() < quantities.size()) {
+            Set<UUID> found = items.stream()
+                    .map(InventoryItem::getProductId)
+                    .collect(Collectors.toSet());
+
+            List<String> missing = quantities.keySet()
+                    .stream()
+                    .filter(id -> !found.contains(id))
+                    .sorted()
+                    .map(UUID::toString)
+                    .toList();
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Inventory items not found: " + String.join(", ", missing));
+        }
+
+        items.forEach(item -> inventoryModifier.accept(item, quantities.get(item.getProductId())));
+
+        return inventoryItemRepository.saveAll(items)
+                .stream()
+                .map(InventoryItemResponse::from)
+                .toList();
     }
 
     private InventoryItem findForUpdate(UUID productId) {
