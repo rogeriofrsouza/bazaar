@@ -4,7 +4,6 @@ import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
 import com.rogeriofrsouza.bazaar.order.inventory.InventoryClient;
 import com.rogeriofrsouza.bazaar.order.inventory.ReservationRequest;
-import com.rogeriofrsouza.bazaar.order.inventory.ReservationRequest.ReservationItemRequest;
 import com.rogeriofrsouza.bazaar.order.inventory.StockReservedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -41,8 +40,7 @@ public class OrderService {
     public OrderResponse findById(UUID id, String customerSubject) {
         return orderRepository.findByIdAndCustomerSubject(id, customerSubject)
                 .map(OrderResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Order " + id + " not found"));
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     @Transactional(readOnly = true)
@@ -79,15 +77,32 @@ public class OrderService {
                 })
                 .toList();
 
-        ReservationRequest reservation = new ReservationRequest(
-                items.stream()
-                        .map(item -> new ReservationItemRequest(item.getProductId(), item.getQuantity()))
-                        .toList());
-
+        ReservationRequest reservation = new ReservationRequest(items);
         inventoryClient.reserve(reservation);
         eventPublisher.publishEvent(new StockReservedEvent(reservation));
 
         Order order = Order.place(customerSubject, items);
         return OrderResponse.from(orderRepository.save(order));
+    }
+
+    @Transactional
+    public OrderResponse confirm(UUID id, String customerSubject) {
+        Order order = findForUpdate(id, customerSubject);
+        order.confirm();
+        inventoryClient.fulfil(new ReservationRequest(order.getItems()));
+        return OrderResponse.from(orderRepository.save(order));
+    }
+
+    @Transactional
+    public OrderResponse cancel(UUID id, String customerSubject) {
+        Order order = findForUpdate(id, customerSubject);
+        order.cancel();
+        inventoryClient.release(new ReservationRequest(order.getItems()));
+        return OrderResponse.from(orderRepository.save(order));
+    }
+
+    private Order findForUpdate(UUID id, String customerSubject) {
+        return orderRepository.findWithLockByIdAndCustomerSubject(id, customerSubject)
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 }

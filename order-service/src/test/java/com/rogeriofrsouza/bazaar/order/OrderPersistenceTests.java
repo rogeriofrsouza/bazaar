@@ -76,6 +76,22 @@ class OrderPersistenceTests {
         assertThat(versionOf(placed.getId())).isEqualTo(1);
     }
 
+    @Test
+    void persistsStatusChange() {
+        Order placed = orderRepository.save(Order.place("subject-1", List.of(
+                OrderItem.create(UUID.randomUUID(), "Headset", new BigDecimal("199.00"), 1)
+        )));
+        Order locked = orderRepository.findWithLockByIdAndCustomerSubject(placed.getId(), "subject-1").orElseThrow();
+
+        locked.confirm();
+        orderRepository.save(locked);
+
+        Order confirmed = orderRepository.findById(placed.getId()).orElseThrow();
+        assertThat(confirmed.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(confirmed.getItems()).extracting(OrderItem::getProductName).containsExactly("Headset");
+        assertThat(versionOf(placed.getId())).isEqualTo(1);
+    }
+
     private Long versionOf(UUID orderId) {
         return jdbcTemplate.queryForObject("SELECT version FROM orders WHERE id = ?", Long.class, orderId);
     }

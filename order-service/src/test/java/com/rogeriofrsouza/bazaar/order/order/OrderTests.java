@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.within;
 
@@ -61,5 +62,39 @@ class OrderTests {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 0))
                 .withMessage("Quantity must be positive");
+    }
+
+    @Test
+    void confirmsPendingOrder() {
+        Order order = pendingOrder();
+
+        order.confirm();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void cancelsPendingOrder() {
+        Order order = pendingOrder();
+
+        order.cancel();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void movesOnlyPendingOrders() {
+        Order order = pendingOrder();
+        order.cancel();
+
+        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::confirm)
+                .withMessage("Order " + order.getId() + " is CANCELLED, not PENDING");
+        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::cancel);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    private static Order pendingOrder() {
+        return Order.place("subject-1", List.of(
+                OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 1)));
     }
 }

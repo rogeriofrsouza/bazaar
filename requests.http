@@ -35,3 +35,11 @@ GET http://localhost:8080/api/orders
 Authorization: Bearer {{token}}
 ###
 
+# Order status transitions (replace the id with one of your pending orders)
+POST http://localhost:8080/api/orders/00000000-0000-0000-0000-000000000000/confirm
+Authorization: Bearer {{token}}
+###
+POST http://localhost:8080/api/orders/00000000-0000-0000-0000-000000000000/cancel
+Authorization: Bearer {{token}}
+###
+

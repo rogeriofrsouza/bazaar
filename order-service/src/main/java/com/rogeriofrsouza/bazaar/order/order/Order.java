@@ -23,7 +23,7 @@ public class Order {
 
     private final String customerSubject;
 
-    private final OrderStatus status;
+    private OrderStatus status;
 
     private final BigDecimal total;
 
@@ -71,6 +71,22 @@ public class Order {
                 null,
                 null
         );
+    }
+
+    public void confirm() {
+        requirePending();
+        status = OrderStatus.CONFIRMED;
+    }
+
+    public void cancel() {
+        requirePending();
+        status = OrderStatus.CANCELLED;
+    }
+
+    private void requirePending() {
+        if (status != OrderStatus.PENDING) {
+            throw new OrderNotPendingException(id, status);
+        }
     }
 
     private static BigDecimal sumOfSubtotals(Set<OrderItem> items) {

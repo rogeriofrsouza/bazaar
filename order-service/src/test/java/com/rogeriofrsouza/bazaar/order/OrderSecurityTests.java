@@ -42,6 +42,17 @@ class OrderSecurityTests {
     }
 
     @Test
+    void confirmingOrderNeedsToken() {
+        assertThat(mvc.post().uri("/api/orders/{id}/confirm", UUID.randomUUID())).hasStatus(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void confirmingOrderWithTokenReachesController() {
+        assertThat(mvc.post().uri("/api/orders/{id}/confirm", UUID.randomUUID()).with(jwt()))
+                .hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void apiDocsArePublic() {
         assertThat(mvc.get().uri("/v3/api-docs")).hasStatusOk();
     }

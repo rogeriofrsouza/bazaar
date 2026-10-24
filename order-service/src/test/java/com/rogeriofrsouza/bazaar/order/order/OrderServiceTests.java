@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
@@ -168,15 +169,73 @@ class OrderServiceTests {
                 new OrderItemRequest(cable, 1)
         )));
 
-        assertThatThrownBy(() -> orderService.findById(placed.id(), "subject-2"))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatExceptionOfType(OrderNotFoundException.class)
+                .isThrownBy(() -> orderService.findById(placed.id(), "subject-2"));
     }
 
     @Test
     void failsWhenOrderDoesNotExist() {
-        assertThatThrownBy(() -> orderService.findById(UUID.randomUUID(), "subject-1"))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        UUID id = UUID.randomUUID();
+
+        assertThatExceptionOfType(OrderNotFoundException.class)
+                .isThrownBy(() -> orderService.findById(id, "subject-1"))
+                .withMessage("Order " + id + " not found");
+    }
+
+    @Test
+    void confirmsOrderAndFulfilsStock() {
+        UUID keyboard = UUID.randomUUID();
+        OrderResponse placed = placeOrder("subject-1", keyboard, 2);
+
+        OrderResponse confirmed = orderService.confirm(placed.id(), "subject-1");
+
+        assertThat(confirmed.status()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.CONFIRMED);
+        then(inventoryClient).should().fulfil(new ReservationRequest(List.of(new ReservationItemRequest(keyboard, 2))));
+    }
+
+    @Test
+    void cancelsOrderAndReleasesStock() {
+        UUID keyboard = UUID.randomUUID();
+        OrderResponse placed = placeOrder("subject-1", keyboard, 2);
+
+        OrderResponse cancelled = orderService.cancel(placed.id(), "subject-1");
+
+        assertThat(cancelled.status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.CANCELLED);
+        then(inventoryClient).should()
+                .release(new ReservationRequest(List.of(new ReservationItemRequest(keyboard, 2))));
+    }
+
+    @Test
+    void rejectsConfirmingCancelledOrder() {
+        OrderResponse placed = placeOrder("subject-1", UUID.randomUUID(), 1);
+        orderService.cancel(placed.id(), "subject-1");
+
+        assertThatExceptionOfType(OrderNotPendingException.class)
+                .isThrownBy(() -> orderService.confirm(placed.id(), "subject-1"));
+
+        assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.CANCELLED);
+        then(inventoryClient).should(never()).fulfil(any());
+    }
+
+    @Test
+    void hidesOtherCustomersOrdersFromTransitions() {
+        OrderResponse placed = placeOrder("subject-1", UUID.randomUUID(), 1);
+
+        assertThatExceptionOfType(OrderNotFoundException.class)
+                .isThrownBy(() -> orderService.cancel(placed.id(), "subject-2"));
+
+        assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.PENDING);
+        then(inventoryClient).should(never()).release(any());
+    }
+
+    private OrderResponse placeOrder(String customerSubject, UUID productId, int quantity) {
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct(productId, "Keyboard", new BigDecimal("150.00"))
+        ));
+        return orderService.place(customerSubject, new CreateOrderRequest(List.of(
+                new OrderItemRequest(productId, quantity)
+        )));
     }
 }

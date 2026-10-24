@@ -56,6 +56,18 @@ class OrderController {
         return ResponseEntity.created(location).body(order);
     }
 
+    @PostMapping("/{id}/confirm")
+    OrderResponse confirm(@AuthenticationPrincipal Jwt jwt,
+                          @PathVariable UUID id) {
+        return orderService.confirm(id, subjectOf(jwt));
+    }
+
+    @PostMapping("/{id}/cancel")
+    OrderResponse cancel(@AuthenticationPrincipal Jwt jwt,
+                         @PathVariable UUID id) {
+        return orderService.cancel(id, subjectOf(jwt));
+    }
+
     private static String subjectOf(Jwt jwt) {
         String subject = jwt.getSubject();
         if (subject == null) {

@@ -93,6 +93,17 @@ class InventoryClientTests {
     }
 
     @Test
+    void fulfilsReservation() {
+        server.expect(requestTo(RESERVATIONS + "/fulfil"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+
+        inventoryClient.fulfil(reservation());
+
+        server.verify();
+    }
+
+    @Test
     void failsWithConflictWhenStockIsShort() {
         server.expect(requestTo(RESERVATIONS))
                 .andRespond(withStatus(HttpStatus.CONFLICT)

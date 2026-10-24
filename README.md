@@ -205,6 +205,8 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 
 `POST /api/orders` reserves the stock for every item through `POST /api/inventory/reservations` before it saves the order, sending the caller's token on to `inventory-service`. If any item is short or has no inventory, nothing is reserved and the order fails with 409. If `inventory-service` fails or can't be reached, it fails with 502. If the order then can't be saved, the reservation is released.
 
+A new order is `PENDING`. Its owner moves it on with `POST /api/orders/{id}/confirm`, which fulfils the reserved stock through `POST /api/inventory/reservations/fulfil` and marks the order `CONFIRMED`, or with `POST /api/orders/{id}/cancel`, which releases the stock through `POST /api/inventory/reservations/release` and marks it `CANCELLED`. Only a `PENDING` order can be confirmed or cancelled; any other status is a 409.
+
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 
 ```sh

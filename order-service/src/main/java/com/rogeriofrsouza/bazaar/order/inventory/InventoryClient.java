@@ -40,6 +40,10 @@ public class InventoryClient {
         post(API_PATH + "/reservations/release", request);
     }
 
+    public void fulfil(ReservationRequest request) {
+        post(API_PATH + "/reservations/fulfil", request);
+    }
+
     private void post(String path, ReservationRequest request) {
         try {
             restClient.post()
