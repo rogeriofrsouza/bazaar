@@ -98,6 +98,11 @@ public class InventoryItemService {
         return changeAll(request, InventoryItem::release);
     }
 
+    @Transactional
+    public List<InventoryItemResponse> fulfilAll(ReservationRequest request) {
+        return changeAll(request, InventoryItem::fulfil);
+    }
+
     private List<InventoryItemResponse> changeAll(ReservationRequest request,
                                                   ObjIntConsumer<InventoryItem> inventoryModifier) {
         Map<UUID, Integer> quantities = request.items()

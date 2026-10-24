@@ -130,6 +130,41 @@ class InventoryPersistenceTests {
     }
 
     @Test
+    void fulfilsAllItems() {
+        UUID keyboard = inventoryItemService.create(request(10)).productId();
+        UUID mouse = inventoryItemService.create(request(5)).productId();
+        ReservationRequest reservation = new ReservationRequest(List.of(
+                new ReservationItemRequest(keyboard, 3),
+                new ReservationItemRequest(mouse, 1)
+        ));
+        inventoryItemService.reserveAll(reservation);
+
+        List<InventoryItemResponse> fulfilled = inventoryItemService.fulfilAll(reservation);
+
+        assertThat(fulfilled).containsExactlyInAnyOrder(
+                new InventoryItemResponse(keyboard, 7, 0, 7),
+                new InventoryItemResponse(mouse, 4, 0, 4)
+        );
+    }
+
+    @Test
+    void fulfilsNothingWhenOneItemIsNotReserved() {
+        UUID keyboard = inventoryItemService.create(request(10)).productId();
+        UUID mouse = inventoryItemService.create(request(5)).productId();
+        inventoryItemService.reserve(keyboard, 3);
+
+        assertThatExceptionOfType(InsufficientStockException.class)
+                .isThrownBy(() -> inventoryItemService.fulfilAll(new ReservationRequest(List.of(
+                        new ReservationItemRequest(keyboard, 3),
+                        new ReservationItemRequest(mouse, 1)
+                ))));
+
+        assertThat(inventoryItemService.findByProductId(keyboard))
+                .isEqualTo(new InventoryItemResponse(keyboard, 10, 3, 7));
+        assertThat(versionOf(mouse)).isZero();
+    }
+
+    @Test
     void reservesNothingWhenOneItemIsShort() {
         UUID keyboard = inventoryItemService.create(request(10)).productId();
         UUID mouse = inventoryItemService.create(request(1)).productId();

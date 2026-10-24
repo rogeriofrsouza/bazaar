@@ -61,6 +61,11 @@ class InventoryItemController {
         return inventoryItemService.releaseAll(request);
     }
 
+    @PostMapping("/reservations/fulfil")
+    List<InventoryItemResponse> fulfilAll(@Valid @RequestBody ReservationRequest request) {
+        return inventoryItemService.fulfilAll(request);
+    }
+
     @PostMapping("/{productId}/restock")
     InventoryItemResponse restock(@PathVariable UUID productId,
                                   @Valid @RequestBody QuantityRequest request) {
