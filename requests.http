@@ -31,4 +31,7 @@ Authorization: Bearer {{token}}
 GET http://localhost:8080/api/customers/me/addresses
 Authorization: Bearer {{token}}
 ###
+GET http://localhost:8080/api/orders
+Authorization: Bearer {{token}}
+###
 

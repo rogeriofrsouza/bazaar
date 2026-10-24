@@ -2,6 +2,8 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,12 @@ public class OrderService {
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Order " + id + " not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> findAll(String customerSubject, Pageable pageable) {
+        return orderRepository.findByCustomerSubject(customerSubject, pageable)
+                .map(OrderResponse::from);
     }
 
     @Transactional

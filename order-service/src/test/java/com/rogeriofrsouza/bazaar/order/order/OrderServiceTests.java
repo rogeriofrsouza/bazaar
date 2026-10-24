@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
@@ -79,6 +82,26 @@ class OrderServiceTests {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(ex.getReason()).contains(unknown.toString());
                 });
+    }
+
+    @Test
+    void listsOnlyOwnOrdersNewestFirst() {
+        UUID cable = UUID.randomUUID();
+        given(catalogClient.getProducts(anyCollection())).willReturn(List.of(
+                new CatalogProduct(cable, "Cable", new BigDecimal("9.99"))
+        ));
+        String owner = "subject-" + UUID.randomUUID();
+        CreateOrderRequest request = new CreateOrderRequest(List.of(new OrderItemRequest(cable, 1)));
+
+        OrderResponse first = orderService.place(owner, request);
+        OrderResponse second = orderService.place(owner, request);
+        orderService.place("subject-" + UUID.randomUUID(), request);
+
+        Page<OrderResponse> page = orderService.findAll(
+                owner, PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent()).extracting(OrderResponse::id).containsExactly(second.id(), first.id());
     }
 
     @Test

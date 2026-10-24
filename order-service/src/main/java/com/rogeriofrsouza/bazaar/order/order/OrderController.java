@@ -1,6 +1,12 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +26,15 @@ class OrderController {
 
     OrderController(OrderService orderService) {
         this.orderService = orderService;
+    }
+
+    @GetMapping
+    PagedModel<OrderResponse> list(@AuthenticationPrincipal Jwt jwt,
+                                   @ParameterObject
+                                   @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+                                   Pageable pageable) {
+        Page<OrderResponse> page = orderService.findAll(subjectOf(jwt), pageable);
+        return new PagedModel<>(page);
     }
 
     @GetMapping("/{id}")

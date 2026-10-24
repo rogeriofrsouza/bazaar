@@ -32,6 +32,16 @@ class OrderSecurityTests {
     }
 
     @Test
+    void listingOrdersNeedsToken() {
+        assertThat(mvc.get().uri("/api/orders")).hasStatus(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void listingOrdersWithTokenReachesController() {
+        assertThat(mvc.get().uri("/api/orders").with(jwt())).hasStatusOk();
+    }
+
+    @Test
     void apiDocsArePublic() {
         assertThat(mvc.get().uri("/v3/api-docs")).hasStatusOk();
     }
