@@ -14,6 +14,17 @@ spring:
         jwt:
           issuer-uri: http://localhost:9090/realms/bazaar
           jwk-set-uri: http://localhost:9090/realms/bazaar/protocol/openid-connect/certs
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
 
 eureka:
   client:
@@ -21,3 +32,5 @@ eureka:
 
 bazaar:
   gateway-url: http://localhost:8080
+  outbox:
+    relay-delay: 1h

@@ -3,7 +3,6 @@ package com.rogeriofrsouza.bazaar.inventory.outbox;
 import com.rogeriofrsouza.bazaar.inventory.ContainersConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.tuple;
 
 @SpringBootTest
 @Import({ContainersConfig.class, OutboxRelayTests.TestQueueConfig.class})
@@ -55,29 +54,45 @@ class OutboxRelayTests {
     }
 
     @Test
-    void publishesPendingMessagesAndMarksThemSent() {
-        UUID orderId = UUID.randomUUID();
-        add("stock.reserved", Map.of("orderId", orderId));
+    void publishesPendingMessagesInOrderAndMarksThemSent() {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        add("stock.reserved", Map.of("orderId", first));
+        add("stock.rejected", Map.of("orderId", second));
 
         outboxRelay.relay();
 
+        assertReceived("stock.reserved", first);
+        assertReceived("stock.rejected", second);
+        assertThat(outboxMessageRepository.findAll())
+                .extracting(OutboxMessage::getRoutingKey, OutboxRelayTests::isSent)
+                .containsExactlyInAnyOrder(tuple("stock.reserved", true), tuple("stock.rejected", true));
+    }
+
+    @Test
+    void keepsUnroutableMessagesPendingAndSendsTheRest() {
+        UUID routable = UUID.randomUUID();
+        add("nobody.listens", Map.of("orderId", UUID.randomUUID()));
+        add("stock.reserved", Map.of("orderId", routable));
+
+        outboxRelay.relay();
+
+        assertReceived("stock.reserved", routable);
+        assertThat(outboxMessageRepository.findAll())
+                .extracting(OutboxMessage::getRoutingKey, OutboxRelayTests::isSent)
+                .containsExactlyInAnyOrder(tuple("nobody.listens", false), tuple("stock.reserved", true));
+    }
+
+    private void assertReceived(String routingKey, UUID orderId) {
         Message message = rabbitTemplate.receive(QUEUE, 5_000);
         assertThat(message).isNotNull();
         assertThat(new String(message.getBody(), StandardCharsets.UTF_8)).contains(orderId.toString());
         assertThat(message.getMessageProperties().getContentType()).isEqualTo(MessageProperties.CONTENT_TYPE_JSON);
-        assertThat(message.getMessageProperties().getReceivedRoutingKey()).isEqualTo("stock.reserved");
-        assertThat(outboxMessageRepository.findAll()).singleElement()
-                .satisfies(outboxMessage -> assertThat(outboxMessage.getSentAt()).isNotNull());
+        assertThat(message.getMessageProperties().getReceivedRoutingKey()).isEqualTo(routingKey);
     }
 
-    @Test
-    void keepsUnroutableMessagesPending() {
-        add("nobody.listens", Map.of("orderId", UUID.randomUUID()));
-
-        assertThatExceptionOfType(AmqpException.class).isThrownBy(outboxRelay::relay);
-
-        assertThat(outboxMessageRepository.findAll()).singleElement()
-                .satisfies(outboxMessage -> assertThat(outboxMessage.getSentAt()).isNull());
+    private static boolean isSent(OutboxMessage outboxMessage) {
+        return outboxMessage.getSentAt() != null;
     }
 
     private void add(String routingKey, Object message) {
