@@ -69,6 +69,23 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.1-management-alpine
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   keycloak-db:
     container_name: keycloak-db
     image: postgres:18-alpine
@@ -120,4 +137,5 @@ volumes:
   inventory-service-db-data:
   order-service-db-data:
   customer-service-db-data:
+  rabbitmq-data:
   keycloak-db-data:

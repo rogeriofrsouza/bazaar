@@ -1,11 +1,12 @@
 # Bazaar
 
-An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services share common infrastructure components (Keycloak, with Redis, RabbitMQ, etc. to come).
+An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services share common infrastructure components (Keycloak and RabbitMQ, with Redis, etc. to come).
 
 ## Tech stack
 
 - Java 26, Spring Boot 4.1, Maven (multi-module)
 - PostgreSQL 18 with Flyway migrations
+- RabbitMQ 4.1 with Spring AMQP for messages between services
 - Docker Compose for local infrastructure and apps
 - Cloud Native Buildpacks (`spring-boot:build-image`) for OCI images
 - Testcontainers for tests and dev-time infrastructure
@@ -36,7 +37,7 @@ bazaar/
 ├── customer-service/    # Customer microservice
 └── docker/
     ├── .env             # Variables used by the compose files
-    ├── infra.yml        # Infrastructure (databases, Keycloak, ...)
+    ├── infra.yml        # Infrastructure (databases, RabbitMQ, Keycloak, ...)
     ├── apps.yml         # Microservice containers
     └── keycloak/        # Realm imported by Keycloak on startup
 ```
@@ -125,6 +126,8 @@ The `<service>.yaml` files in `config-repo/` read connection settings from envir
 
 `JWT_ISSUER_URI` (default `http://localhost:9090/realms/bazaar`) and `JWT_JWK_SET_URI` (default `http://localhost:9090/realms/bazaar/protocol/openid-connect/certs`) point each service at Keycloak to validate access tokens (see [Security](#security)).
 
+`RABBITMQ_HOST` (default `localhost`), `RABBITMQ_PORT` (default `5672`), `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` (default `bazaar` / `bazaar`) point the services that exchange messages at RabbitMQ (see [RabbitMQ](#rabbitmq)).
+
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
 All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in `config-repo/` enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
@@ -154,6 +157,12 @@ The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), si
 #### API documentation
 
 Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api-docs`. The gateway proxies each spec as `/<service>/v3/api-docs` and hosts one Swagger UI for all of them at `http://localhost:8080/swagger-ui.html`, with a dropdown to pick the service. The specs list the gateway (`GATEWAY_URL`, default `http://localhost:8080`) as their server, so "Try it out" requests go through the gateway.
+
+### RabbitMQ
+
+`infra.yml` runs RabbitMQ 4.1 with the management plugin. Services connect on port 5672 (`RABBITMQ_PORT`) as `bazaar` / `bazaar` (`RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` in `docker/.env`), and the management UI is at `http://localhost:15672` (`RABBITMQ_MANAGEMENT_PORT`) with the same credentials. Its data lives in the `rabbitmq-data` volume.
+
+The shared `config-repo/application.yaml` turns on publisher confirms and returns with mandatory routing, so a publisher learns when the broker didn't accept a message or couldn't route it. Listeners try a message 3 times and then reject it without requeueing, so a queue with a dead-letter exchange sends it there.
 
 ### Keycloak
 

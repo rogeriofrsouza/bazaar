@@ -64,12 +64,18 @@ services:
       DB_URL: ${INVENTORY_DB_URL}
       DB_USERNAME: ${INVENTORY_DB_USERNAME}
       DB_PASSWORD: ${INVENTORY_DB_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
       DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
       JWT_ISSUER_URI: ${KEYCLOAK_ISSUER_URI}
       JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI}
     depends_on:
       inventory-service-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       config-server:
         condition: service_started
@@ -86,12 +92,18 @@ services:
       DB_URL: ${ORDER_DB_URL}
       DB_USERNAME: ${ORDER_DB_USERNAME}
       DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
       DISCOVERY_SERVER_URL: ${DISCOVERY_SERVER_URL}
       JWT_ISSUER_URI: ${KEYCLOAK_ISSUER_URI}
       JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI}
     depends_on:
       order-service-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       config-server:
         condition: service_started
