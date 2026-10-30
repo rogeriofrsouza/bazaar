@@ -84,9 +84,9 @@ Use this to run the whole system as it would run when deployed.
 
 1. Build the service images (Cloud Native Buildpacks, needs Docker):
    ```sh
-   ./mvnw -pl config-server,discovery-server,api-gateway,catalog-service,inventory-service,order-service,customer-service spring-boot:build-image -DskipTests
+   ./mvnw spring-boot:build-image -DskipTests
    ```
-   Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`.
+   Run from the root, the goal builds one image per module and skips the parent POM. Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`. To rebuild a single one, add `-pl <module>` (e.g. `./mvnw -pl order-service spring-boot:build-image -DskipTests`).
 2. Start infrastructure and apps:
    ```sh
    docker compose -f docker/infra.yml -f docker/apps.yml up -d
