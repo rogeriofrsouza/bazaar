@@ -8,6 +8,7 @@ Bazaar is an e-commerce platform built as Spring Boot microservices (Java 26, Sp
 
 ```
 pom.xml              # Parent POM: modules, Spring Cloud BOM, shared spring-boot-maven-plugin image config
+compose.yaml         # Compose entry point, includes docker/infra.yml and docker/apps.yml
 config-repo/         # Config files served by config-server (application.yaml, <service>.yaml)
 config-server/       # Spring Cloud Config server (native backend on config-repo/, no database)
 discovery-server/    # Eureka server, standalone (own application.yaml, no config client, no database)
@@ -50,7 +51,7 @@ docker/keycloak/     # bazaar realm (roles, bazaar-web client, test users), impo
 - In compose files, never hardcode values under `environment:`. Write `VAR: ${SOME_VAR}` and add `SOME_VAR` to `docker/.env`. Prefix variables with the service name (`CATALOG_DB_URL`).
 - Keycloak has two URLs in `docker/.env`: `KEYCLOAK_ISSUER_URI` uses `localhost` (it must equal the `iss` claim of tokens requested from the host) and `KEYCLOAK_JWK_SET_URI` uses the `keycloak` container name (where containers download the signing keys). `apps.yml` passes them to each service as `JWT_ISSUER_URI` / `JWT_JWK_SET_URI`. Keys load on the first token, so services don't `depends_on` Keycloak.
 - `docker/keycloak/bazaar-realm.json` is the source of truth for the realm: the `customer` and `admin` roles, the public `bazaar-web` client (authorization code + PKCE, plus the password grant for local tokens) and one test user per role (`customer` / `customer`, `admin` / `admin`). The import gives a user only the roles listed in its `realmRoles`, so each user also lists `default-roles-bazaar`; without it the user has no `account` client roles and the account console fails. Change the realm there, not in the admin console. Keycloak imports it only when the realm doesn't exist yet.
-- Both compose files use project name `bazaar`. Full stack: `docker compose -f docker/infra.yml -f docker/apps.yml up -d`.
+- All compose files use project name `bazaar`. The root `compose.yaml` only `include`s `docker/infra.yml` and `docker/apps.yml`; services go in those files, not in it. Full stack: `docker compose up -d`. Infrastructure only: `docker compose -f docker/infra.yml up -d`.
 - Images come from the parent POM config: `rogeriofrsouza/bazaar-<artifactId>:<version>` plus `:latest`. `apps.yml` references the untagged name (`latest`).
 
 ## Testing

@@ -28,6 +28,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 ```
 bazaar/
 ├── pom.xml              # Parent POM (modules, Spring Cloud BOM, shared OCI image config)
+├── compose.yaml         # Compose entry point, includes docker/infra.yml and docker/apps.yml
 ├── config-server/       # Spring Cloud Config server
 ├── discovery-server/    # Eureka discovery server
 ├── api-gateway/         # API gateway (Spring Cloud Gateway)
@@ -89,16 +90,18 @@ Use this to run the whole system as it would run when deployed.
    Run from the root, the goal builds one image per module and skips the parent POM. Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`. To rebuild a single one, add `-pl <module>` (e.g. `./mvnw -pl order-service spring-boot:build-image -DskipTests`).
 2. Start infrastructure and apps:
    ```sh
-   docker compose -f docker/infra.yml -f docker/apps.yml up -d
+   docker compose up -d
    ```
 
-Rebuild the image after code changes; Compose does not build it for you.
+`compose.yaml` at the repository root includes `docker/infra.yml` and `docker/apps.yml`, so Compose finds it without `-f`. Each included file keeps its own directory for relative paths and reads `docker/.env`.
+
+Rebuild the image after code changes; Compose does not build it for you. Then recreate its container with `docker compose up -d <service>`.
 
 ### Stopping
 
 ```sh
-docker compose -f docker/infra.yml -f docker/apps.yml down      # keep data
-docker compose -f docker/infra.yml -f docker/apps.yml down -v   # also remove volumes
+docker compose down      # keep data
+docker compose down -v   # also remove volumes
 ```
 
 ## Development with DevTools in IntelliJ
@@ -191,9 +194,9 @@ These users belong to the `bazaar` realm, so the admin console does not accept t
 The import skips a realm that already exists, so after editing the file reset Keycloak's database to import it again. This leaves the service databases alone:
 
 ```sh
-docker compose -f docker/infra.yml rm -sf keycloak keycloak-db
+docker compose rm -sf keycloak keycloak-db
 docker volume rm bazaar_keycloak-db-data
-docker compose -f docker/infra.yml up -d
+docker compose up -d keycloak
 ```
 
 ### Security
