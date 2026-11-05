@@ -2,10 +2,9 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
-import com.rogeriofrsouza.bazaar.order.inventory.InventoryClient;
-import com.rogeriofrsouza.bazaar.order.inventory.ReservationRequest;
-import com.rogeriofrsouza.bazaar.order.inventory.StockReservedEvent;
-import org.springframework.context.ApplicationEventPublisher;
+import com.rogeriofrsouza.bazaar.order.outbox.Outbox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -15,25 +14,26 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderRepository orderRepository;
     private final CatalogClient catalogClient;
-    private final InventoryClient inventoryClient;
-    private final ApplicationEventPublisher eventPublisher;
+    private final Outbox outbox;
 
-    OrderService(OrderRepository orderRepository, CatalogClient catalogClient, InventoryClient inventoryClient,
-                 ApplicationEventPublisher eventPublisher) {
+    OrderService(OrderRepository orderRepository, CatalogClient catalogClient, Outbox outbox) {
         this.orderRepository = orderRepository;
         this.catalogClient = catalogClient;
-        this.inventoryClient = inventoryClient;
-        this.eventPublisher = eventPublisher;
+        this.outbox = outbox;
     }
 
     @Transactional(readOnly = true)
@@ -77,28 +77,51 @@ public class OrderService {
                 })
                 .toList();
 
-        ReservationRequest reservation = new ReservationRequest(items);
-        inventoryClient.reserve(reservation);
-        eventPublisher.publishEvent(new StockReservedEvent(reservation));
-
-        Order order = Order.place(customerSubject, items);
-        return OrderResponse.from(orderRepository.save(order));
+        Order order = orderRepository.save(Order.place(customerSubject, items));
+        outbox.add(OrdersExchange.PLACED, OrderPlacedMessage.from(order));
+        return OrderResponse.from(order);
     }
 
     @Transactional
     public OrderResponse confirm(UUID id, String customerSubject) {
         Order order = findForUpdate(id, customerSubject);
         order.confirm();
-        inventoryClient.fulfil(new ReservationRequest(order.getItems()));
-        return OrderResponse.from(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        outbox.add(OrdersExchange.CONFIRMED, new OrderConfirmedMessage(id));
+        return OrderResponse.from(saved);
     }
 
     @Transactional
     public OrderResponse cancel(UUID id, String customerSubject) {
         Order order = findForUpdate(id, customerSubject);
         order.cancel();
-        inventoryClient.release(new ReservationRequest(order.getItems()));
-        return OrderResponse.from(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        outbox.add(OrdersExchange.CANCELLED, new OrderCancelledMessage(id));
+        return OrderResponse.from(saved);
+    }
+
+    @Transactional
+    public void markReserved(StockReservedMessage message) {
+        changePending(message.orderId(), StockReservedMessage.class, Order::reserve);
+    }
+
+    @Transactional
+    public void markRejected(StockRejectedMessage message) {
+        changePending(message.orderId(), StockRejectedMessage.class, order -> order.reject(message.reason()));
+    }
+
+    private void changePending(UUID orderId, Class<?> messageType, Consumer<Order> change) {
+        Optional<Order> pending = orderRepository.findWithLockById(orderId)
+                .filter(order -> order.getStatus() == OrderStatus.PENDING);
+
+        if (pending.isEmpty()) {
+            log.info("Ignoring {} for order {} that is not pending", messageType.getSimpleName(), orderId);
+            return;
+        }
+
+        Order order = pending.get();
+        change.accept(order);
+        orderRepository.save(order);
     }
 
     private Order findForUpdate(UUID id, String customerSubject) {

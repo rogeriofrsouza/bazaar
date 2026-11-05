@@ -83,13 +83,32 @@ class OrderPersistenceTests {
         )));
         Order locked = orderRepository.findWithLockByIdAndCustomerSubject(placed.getId(), "subject-1").orElseThrow();
 
-        locked.confirm();
+        locked.reserve();
         orderRepository.save(locked);
+        Order reserved = orderRepository.findWithLockById(placed.getId()).orElseThrow();
+        reserved.confirm();
+        orderRepository.save(reserved);
 
         Order confirmed = orderRepository.findById(placed.getId()).orElseThrow();
         assertThat(confirmed.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(confirmed.getRejectionReason()).isNull();
         assertThat(confirmed.getItems()).extracting(OrderItem::getProductName).containsExactly("Headset");
-        assertThat(versionOf(placed.getId())).isEqualTo(1);
+        assertThat(versionOf(placed.getId())).isEqualTo(2);
+    }
+
+    @Test
+    void persistsRejectionReason() {
+        Order placed = orderRepository.save(Order.place("subject-1", List.of(
+                OrderItem.create(UUID.randomUUID(), "Monitor", new BigDecimal("900.00"), 2)
+        )));
+        Order locked = orderRepository.findWithLockById(placed.getId()).orElseThrow();
+
+        locked.reject("Only 1 units available");
+        orderRepository.save(locked);
+
+        Order rejected = orderRepository.findById(placed.getId()).orElseThrow();
+        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(rejected.getRejectionReason()).isEqualTo("Only 1 units available");
     }
 
     private Long versionOf(UUID orderId) {

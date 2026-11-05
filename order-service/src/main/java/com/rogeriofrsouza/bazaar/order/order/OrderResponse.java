@@ -1,5 +1,7 @@
 package com.rogeriofrsouza.bazaar.order.order;
 
+import org.jspecify.annotations.Nullable;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.UUID;
 public record OrderResponse(
         UUID id,
         OrderStatus status,
+        @Nullable String rejectionReason,
         BigDecimal total,
         Instant createdAt,
         List<OrderItemResponse> items
@@ -22,6 +25,7 @@ public record OrderResponse(
         return new OrderResponse(
                 order.getId(),
                 order.getStatus(),
+                order.getRejectionReason(),
                 order.getTotal(),
                 Objects.requireNonNull(order.getCreatedAt(), "Order must be saved before it is mapped"),
                 items

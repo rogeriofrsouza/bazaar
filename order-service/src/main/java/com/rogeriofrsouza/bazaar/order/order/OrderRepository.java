@@ -14,6 +14,9 @@ public interface OrderRepository extends ListCrudRepository<Order, UUID> {
     Optional<Order> findByIdAndCustomerSubject(UUID id, String customerSubject);
 
     @Lock(LockMode.PESSIMISTIC_WRITE)
+    Optional<Order> findWithLockById(UUID id);
+
+    @Lock(LockMode.PESSIMISTIC_WRITE)
     Optional<Order> findWithLockByIdAndCustomerSubject(UUID id, String customerSubject);
 
     Page<Order> findByCustomerSubject(String customerSubject, Pageable pageable);

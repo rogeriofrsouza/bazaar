@@ -53,7 +53,7 @@ class OrderTests {
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new Order(UUID.randomUUID(), "subject-1", OrderStatus.PENDING,
-                        new BigDecimal("150.00"), Set.of(item), null, null))
+                        new BigDecimal("150.00"), Set.of(item), null, null, null))
                 .withMessage("Order total must match its items");
     }
 
@@ -65,8 +65,47 @@ class OrderTests {
     }
 
     @Test
-    void confirmsPendingOrder() {
+    void reservesPendingOrder() {
         Order order = pendingOrder();
+
+        order.reserve();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
+        assertThat(order.getRejectionReason()).isNull();
+    }
+
+    @Test
+    void rejectsPendingOrderWithReason() {
+        Order order = pendingOrder();
+
+        order.reject("Only 1 units available");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(order.getRejectionReason()).isEqualTo("Only 1 units available");
+    }
+
+    @Test
+    void rejectsBlankRejectionReason() {
+        Order order = pendingOrder();
+
+        assertThatIllegalArgumentException().isThrownBy(() -> order.reject(" "))
+                .withMessage("Rejection reason must not be blank");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+    }
+
+    @Test
+    void reservesOrRejectsOnlyPendingOrders() {
+        Order order = reservedOrder();
+
+        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::reserve)
+                .withMessage("Order " + order.getId() + " is RESERVED, not PENDING");
+        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(() -> order.reject("Out of stock"));
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
+    }
+
+    @Test
+    void confirmsReservedOrder() {
+        Order order = reservedOrder();
 
         order.confirm();
 
@@ -74,8 +113,8 @@ class OrderTests {
     }
 
     @Test
-    void cancelsPendingOrder() {
-        Order order = pendingOrder();
+    void cancelsReservedOrder() {
+        Order order = reservedOrder();
 
         order.cancel();
 
@@ -83,18 +122,30 @@ class OrderTests {
     }
 
     @Test
-    void movesOnlyPendingOrders() {
+    void confirmsOrCancelsOnlyReservedOrders() {
         Order order = pendingOrder();
+
+        assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(order::confirm)
+                .withMessage("Order " + order.getId() + " is PENDING, not RESERVED");
+        assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(order::cancel);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+
+        order.reserve();
         order.cancel();
 
-        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::confirm)
-                .withMessage("Order " + order.getId() + " is CANCELLED, not PENDING");
-        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::cancel);
+        assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(order::confirm)
+                .withMessage("Order " + order.getId() + " is CANCELLED, not RESERVED");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
     }
 
     private static Order pendingOrder() {
         return Order.place("subject-1", List.of(
                 OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 1)));
+    }
+
+    private static Order reservedOrder() {
+        Order order = pendingOrder();
+        order.reserve();
+        return order;
     }
 }

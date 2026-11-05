@@ -30,6 +30,8 @@ public class Order {
     @MappedCollection(idColumn = "order_id")
     private final Set<OrderItem> items;
 
+    private @Nullable String rejectionReason;
+
     @Version
     private @Nullable Long version;
 
@@ -45,6 +47,7 @@ public class Order {
             OrderStatus status,
             BigDecimal total,
             Set<OrderItem> items,
+            @Nullable String rejectionReason,
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
@@ -56,6 +59,7 @@ public class Order {
         this.status = status;
         this.total = total;
         this.items = Set.copyOf(items);
+        this.rejectionReason = rejectionReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -69,23 +73,42 @@ public class Order {
                 sumOfSubtotals(itemSet),
                 itemSet,
                 null,
+                null,
                 null
         );
     }
 
-    public void confirm() {
+    public void reserve() {
         requirePending();
+        status = OrderStatus.RESERVED;
+    }
+
+    public void reject(String reason) {
+        Assert.hasText(reason, "Rejection reason must not be blank");
+        requirePending();
+        status = OrderStatus.REJECTED;
+        rejectionReason = reason;
+    }
+
+    public void confirm() {
+        requireReserved();
         status = OrderStatus.CONFIRMED;
     }
 
     public void cancel() {
-        requirePending();
+        requireReserved();
         status = OrderStatus.CANCELLED;
     }
 
     private void requirePending() {
         if (status != OrderStatus.PENDING) {
             throw new OrderNotPendingException(id, status);
+        }
+    }
+
+    private void requireReserved() {
+        if (status != OrderStatus.RESERVED) {
+            throw new OrderNotReservedException(id, status);
         }
     }
 
@@ -113,6 +136,10 @@ public class Order {
 
     public Set<OrderItem> getItems() {
         return items;
+    }
+
+    public @Nullable String getRejectionReason() {
+        return rejectionReason;
     }
 
     public @Nullable Instant getCreatedAt() {
