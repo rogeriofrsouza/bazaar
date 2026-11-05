@@ -167,6 +167,20 @@ Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api
 
 The shared `config-repo/application.yaml` turns on publisher confirms and returns with mandatory routing, so a publisher learns when the broker didn't accept a message or couldn't route it. Listeners try a message 3 times and then reject it without requeueing, so a queue with a dead-letter exchange sends it there.
 
+#### Messages
+
+Services exchange messages through RabbitMQ in a choreographed saga for checkout. Each service publishes to its own topic exchange, and each consumer has one queue per message type, with a dead-letter queue `<queue>.dlq` on the `bazaar.dlx` exchange:
+
+| Exchange           | Routing key       | Message                            | Queue                               |
+|--------------------|-------------------|------------------------------------|-------------------------------------|
+| `bazaar.orders`    | `order.placed`    | Order id and items (product, qty)  | `inventory-service.order-placed`    |
+| `bazaar.orders`    | `order.confirmed` | Order id                           | `inventory-service.order-confirmed` |
+| `bazaar.orders`    | `order.cancelled` | Order id                           | `inventory-service.order-cancelled` |
+| `bazaar.inventory` | `stock.reserved`  | Order id                           | `order-service.stock-reserved`      |
+| `bazaar.inventory` | `stock.rejected`  | Order id and reason                | `order-service.stock-rejected`      |
+
+A service never publishes directly from its business code. It writes the message to an `outbox_message` table in its own database, in the same transaction as the change it describes, and a scheduled relay publishes pending rows every second (`bazaar.outbox.relay-delay`) and marks the confirmed ones sent. A message is never lost when the broker is down, but it can be delivered more than once, so consumers ignore messages they have already handled.
+
 ### Keycloak
 
 `infra.yml` runs Keycloak in development mode (`start-dev`) at `http://localhost:9090`. `KEYCLOAK_PORT` is both the port Keycloak listens on inside the container (`KC_HTTP_PORT`) and the published host port, so the URL has the same port from the host and from other containers (`http://keycloak:9090`). The admin console at that URL signs into the `master` realm with `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `docker/.env` (`admin` / `admin`).
@@ -215,9 +229,9 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 
 `/api/orders` works the same way: `order-service` stores the token's `sub` with each order it places. `GET /api/orders` lists the caller's orders, newest first and paged (`page`, `size`, `sort`), and `GET /api/orders/{id}` returns 404 for an order that belongs to someone else, as it does for one that doesn't exist.
 
-`POST /api/orders` reserves the stock for every item through `POST /api/inventory/reservations` before it saves the order, sending the caller's token on to `inventory-service`. If any item is short or has no inventory, nothing is reserved and the order fails with 409. If `inventory-service` fails or can't be reached, it fails with 502. If the order then can't be saved, the reservation is released.
+`POST /api/orders` checks the products against `catalog-service`, saves the order as `PENDING` and returns 201 (400 if a product doesn't exist). Stock is reserved asynchronously: `inventory-service` reserves every item or none and answers over RabbitMQ (see [Messages](#messages)), and the order becomes `RESERVED`, or `REJECTED` with a `rejectionReason` such as the item that is short. The client polls `GET /api/orders/{id}` for the outcome.
 
-A new order is `PENDING`. Its owner moves it on with `POST /api/orders/{id}/confirm`, which fulfils the reserved stock through `POST /api/inventory/reservations/fulfil` and marks the order `CONFIRMED`, or with `POST /api/orders/{id}/cancel`, which releases the stock through `POST /api/inventory/reservations/release` and marks it `CANCELLED`. Only a `PENDING` order can be confirmed or cancelled; any other status is a 409.
+Its owner then moves a `RESERVED` order on with `POST /api/orders/{id}/confirm`, which marks it `CONFIRMED` and has `inventory-service` fulfil the reserved stock, or with `POST /api/orders/{id}/cancel`, which marks it `CANCELLED` and has the stock released. Only a `RESERVED` order can be confirmed or cancelled; any other status is a 409.
 
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 
