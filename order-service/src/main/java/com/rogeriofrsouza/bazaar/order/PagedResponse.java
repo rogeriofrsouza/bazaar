@@ -6,9 +6,6 @@ public record PagedResponse<T>(
         List<T> content,
         PageMetadata page
 ) {
-    public PagedResponse {
-        content = content == null ? List.of() : content;
-    }
 
     public record PageMetadata(
             long size,
