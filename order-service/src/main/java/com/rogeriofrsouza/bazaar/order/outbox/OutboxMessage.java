@@ -14,9 +14,7 @@ public class OutboxMessage {
     @Id
     private final UUID id;
 
-    private final String exchange;
-
-    private final String routingKey;
+    private final String topic;
 
     private final String payload;
 
@@ -26,28 +24,24 @@ public class OutboxMessage {
 
     public OutboxMessage(
             UUID id,
-            String exchange,
-            String routingKey,
+            String topic,
             String payload,
             Instant createdAt,
             @Nullable Instant sentAt
     ) {
-        Assert.hasText(exchange, "Exchange must not be blank");
-        Assert.hasText(routingKey, "Routing key must not be blank");
+        Assert.hasText(topic, "Topic must not be blank");
         Assert.hasText(payload, "Payload must not be blank");
         this.id = id;
-        this.exchange = exchange;
-        this.routingKey = routingKey;
+        this.topic = topic;
         this.payload = payload;
         this.createdAt = createdAt;
         this.sentAt = sentAt;
     }
 
-    public static OutboxMessage create(String exchange, String routingKey, String payload) {
+    public static OutboxMessage create(String topic, String payload) {
         return new OutboxMessage(
                 UUID.ofEpochMillis(System.currentTimeMillis()),
-                exchange,
-                routingKey,
+                topic,
                 payload,
                 Instant.now(),
                 null
@@ -62,12 +56,8 @@ public class OutboxMessage {
         return id;
     }
 
-    public String getExchange() {
-        return exchange;
-    }
-
-    public String getRoutingKey() {
-        return routingKey;
+    public String getTopic() {
+        return topic;
     }
 
     public String getPayload() {

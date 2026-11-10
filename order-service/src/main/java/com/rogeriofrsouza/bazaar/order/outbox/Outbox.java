@@ -9,8 +9,6 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class Outbox {
 
-    public static final String EXCHANGE = "bazaar.orders";
-
     private final JdbcAggregateOperations jdbcAggregateOperations;
     private final JsonMapper jsonMapper;
 
@@ -20,8 +18,8 @@ public class Outbox {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void add(String routingKey, Object message) {
+    public void add(String topic, Object message) {
         String payload = jsonMapper.writeValueAsString(message);
-        jdbcAggregateOperations.insert(OutboxMessage.create(EXCHANGE, routingKey, payload));
+        jdbcAggregateOperations.insert(OutboxMessage.create(topic, payload));
     }
 }

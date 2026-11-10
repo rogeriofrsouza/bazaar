@@ -2,10 +2,11 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import com.rogeriofrsouza.bazaar.order.ContainersConfig;
 import org.junit.jupiter.api.Test;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.KafkaTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -20,7 +21,10 @@ import static org.awaitility.Awaitility.await;
 class StockMessageListenerTests {
 
     @Autowired
-    private RabbitTemplate rabbitTemplate;
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private JsonMapper jsonMapper;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -29,8 +33,7 @@ class StockMessageListenerTests {
     void marksOrderReservedWhenStockIsReserved() {
         UUID orderId = placeOrder();
 
-        rabbitTemplate.convertAndSend(InventoryExchange.NAME, InventoryExchange.RESERVED,
-                new StockReservedMessage(orderId));
+        send(InventoryTopics.RESERVED, new StockReservedMessage(orderId));
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 assertThat(orderRepository.findById(orderId))
@@ -41,14 +44,17 @@ class StockMessageListenerTests {
     void marksOrderRejectedWhenStockIsRejected() {
         UUID orderId = placeOrder();
 
-        rabbitTemplate.convertAndSend(InventoryExchange.NAME, InventoryExchange.REJECTED,
-                new StockRejectedMessage(orderId, "Only 1 units available"));
+        send(InventoryTopics.REJECTED, new StockRejectedMessage(orderId, "Only 1 units available"));
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 assertThat(orderRepository.findById(orderId)).hasValueSatisfying(order -> {
                     assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
                     assertThat(order.getRejectionReason()).isEqualTo("Only 1 units available");
                 }));
+    }
+
+    private void send(String topic, Object message) {
+        kafkaTemplate.send(topic, jsonMapper.writeValueAsString(message)).join();
     }
 
     private UUID placeOrder() {

@@ -14,17 +14,16 @@ spring:
         jwt:
           issuer-uri: http://localhost:9090/realms/bazaar
           jwk-set-uri: http://localhost:9090/realms/bazaar/protocol/openid-connect/certs
-  rabbitmq:
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    template:
-      mandatory: true
+  kafka:
+    producer:
+      acks: all
+      properties:
+        max.block.ms: 5000
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
     listener:
-      simple:
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          max-retries: 2
+      ack-mode: record
 
 eureka:
   client:

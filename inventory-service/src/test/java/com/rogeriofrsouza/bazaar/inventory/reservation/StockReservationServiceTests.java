@@ -173,7 +173,7 @@ class StockReservationServiceTests {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void outboxNeedsTransaction() {
         assertThatExceptionOfType(IllegalTransactionStateException.class)
-                .isThrownBy(() -> outbox.add(StockReservedMessage.ROUTING_KEY,
+                .isThrownBy(() -> outbox.add(InventoryTopics.RESERVED,
                         new StockReservedMessage(UUID.randomUUID())));
     }
 
@@ -191,18 +191,16 @@ class StockReservationServiceTests {
 
     private List<Object> outboxMessages(UUID orderId) {
         return jdbcTemplate.query(
-                "SELECT exchange, routing_key, payload FROM outbox_message WHERE payload LIKE ? ORDER BY created_at",
-                (rs, rowNum) -> readMessage(rs.getString("exchange"), rs.getString("routing_key"),
-                        rs.getString("payload")),
+                "SELECT topic, payload FROM outbox_message WHERE payload LIKE ? ORDER BY created_at",
+                (rs, rowNum) -> readMessage(rs.getString("topic"), rs.getString("payload")),
                 "%" + orderId + "%");
     }
 
-    private Object readMessage(String exchange, String routingKey, String payload) {
-        assertThat(exchange).isEqualTo(Outbox.EXCHANGE);
-        Class<?> type = switch (routingKey) {
-            case StockReservedMessage.ROUTING_KEY -> StockReservedMessage.class;
-            case StockRejectedMessage.ROUTING_KEY -> StockRejectedMessage.class;
-            default -> throw new IllegalStateException("Unexpected routing key " + routingKey);
+    private Object readMessage(String topic, String payload) {
+        Class<?> type = switch (topic) {
+            case InventoryTopics.RESERVED -> StockReservedMessage.class;
+            case InventoryTopics.REJECTED -> StockRejectedMessage.class;
+            default -> throw new IllegalStateException("Unexpected topic " + topic);
         };
         return jsonMapper.readValue(payload, type);
     }

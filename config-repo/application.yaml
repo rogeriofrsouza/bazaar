@@ -11,21 +11,17 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:9090/realms/bazaar}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:9090/realms/bazaar/protocol/openid-connect/certs}
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:bazaar}
-    password: ${RABBITMQ_PASSWORD:bazaar}
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    template:
-      mandatory: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      acks: all
+      properties:
+        max.block.ms: 5000
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
     listener:
-      simple:
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          max-retries: 2
+      ack-mode: record
 
 eureka:
   client:

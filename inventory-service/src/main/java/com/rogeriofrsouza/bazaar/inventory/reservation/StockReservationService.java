@@ -37,7 +37,7 @@ public class StockReservationService {
         UUID orderId = message.orderId();
 
         if (stockReservationRepository.existsByOrderId(orderId)) {
-            log.info("Ignoring duplicate {} for order {}", OrderPlacedMessage.ROUTING_KEY, orderId);
+            log.info("Ignoring duplicate {} for order {}", OrdersTopics.PLACED, orderId);
             return;
         }
 
@@ -63,31 +63,31 @@ public class StockReservationService {
 
         inventoryItemRepository.saveAll(items);
         stockReservationRepository.save(StockReservation.reserved(orderId, quantities));
-        outbox.add(StockReservedMessage.ROUTING_KEY, new StockReservedMessage(orderId));
+        outbox.add(InventoryTopics.RESERVED, new StockReservedMessage(orderId));
     }
 
     @Transactional
     public void fulfil(OrderConfirmedMessage message) {
-        change(message.orderId(), OrderConfirmedMessage.ROUTING_KEY, InventoryItem::fulfil, StockReservation::fulfil);
+        change(message.orderId(), OrdersTopics.CONFIRMED, InventoryItem::fulfil, StockReservation::fulfil);
     }
 
     @Transactional
     public void release(OrderCancelledMessage message) {
-        change(message.orderId(), OrderCancelledMessage.ROUTING_KEY, InventoryItem::release, StockReservation::release);
+        change(message.orderId(), OrdersTopics.CANCELLED, InventoryItem::release, StockReservation::release);
     }
 
     private void reject(UUID orderId, Map<UUID, Integer> quantities, String reason) {
         stockReservationRepository.save(StockReservation.rejected(orderId, quantities));
-        outbox.add(StockRejectedMessage.ROUTING_KEY, new StockRejectedMessage(orderId, reason));
+        outbox.add(InventoryTopics.REJECTED, new StockRejectedMessage(orderId, reason));
     }
 
-    private void change(UUID orderId, String routingKey, ObjIntConsumer<InventoryItem> itemChange,
+    private void change(UUID orderId, String topic, ObjIntConsumer<InventoryItem> itemChange,
                         Consumer<StockReservation> reservationChange) {
         Optional<StockReservation> reserved = stockReservationRepository.findWithLockByOrderId(orderId)
                 .filter(reservation -> reservation.getStatus() == StockReservationStatus.RESERVED);
 
         if (reserved.isEmpty()) {
-            log.info("Ignoring {} for order {} with no reserved stock", routingKey, orderId);
+            log.info("Ignoring {} for order {} with no reserved stock", topic, orderId);
             return;
         }
 

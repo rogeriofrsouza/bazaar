@@ -1,6 +1,6 @@
 package com.rogeriofrsouza.bazaar.inventory.reservation;
 
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,17 +12,17 @@ class OrderMessageListener {
         this.stockReservationService = stockReservationService;
     }
 
-    @RabbitListener(queues = OrderPlacedMessage.QUEUE)
+    @KafkaListener(topics = OrdersTopics.PLACED, groupId = OrdersTopics.PLACED_GROUP)
     void onOrderPlaced(OrderPlacedMessage message) {
         stockReservationService.reserve(message);
     }
 
-    @RabbitListener(queues = OrderConfirmedMessage.QUEUE)
+    @KafkaListener(topics = OrdersTopics.CONFIRMED, groupId = OrdersTopics.CONFIRMED_GROUP)
     void onOrderConfirmed(OrderConfirmedMessage message) {
         stockReservationService.fulfil(message);
     }
 
-    @RabbitListener(queues = OrderCancelledMessage.QUEUE)
+    @KafkaListener(topics = OrdersTopics.CANCELLED, groupId = OrdersTopics.CANCELLED_GROUP)
     void onOrderCancelled(OrderCancelledMessage message) {
         stockReservationService.release(message);
     }

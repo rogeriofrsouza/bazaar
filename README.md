@@ -1,12 +1,12 @@
 # Bazaar
 
-An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services share common infrastructure components (Keycloak and RabbitMQ, with Redis, etc. to come).
+An e-commerce platform built as Spring Boot microservices. Each service owns its database. Services share common infrastructure components (Keycloak and Kafka, with Redis, etc. to come).
 
 ## Tech stack
 
 - Java 26, Spring Boot 4.1, Maven (multi-module)
 - PostgreSQL 18 with Flyway migrations
-- RabbitMQ 4.1 with Spring AMQP for messages between services
+- Apache Kafka 4.2 with Spring for Apache Kafka for messages between services
 - Docker Compose for local infrastructure and apps
 - Cloud Native Buildpacks (`spring-boot:build-image`) for OCI images
 - Testcontainers for tests and dev-time infrastructure
@@ -38,7 +38,7 @@ bazaar/
 ├── customer-service/    # Customer microservice
 └── docker/
     ├── .env             # Variables used by the compose files
-    ├── infra.yml        # Infrastructure (databases, RabbitMQ, Keycloak, ...)
+    ├── infra.yml        # Infrastructure (databases, Kafka, Keycloak, ...)
     ├── apps.yml         # Microservice containers
     └── keycloak/        # Realm imported by Keycloak on startup
 ```
@@ -129,7 +129,7 @@ The `<service>.yaml` files in `config-repo/` read connection settings from envir
 
 `JWT_ISSUER_URI` (default `http://localhost:9090/realms/bazaar`) and `JWT_JWK_SET_URI` (default `http://localhost:9090/realms/bazaar/protocol/openid-connect/certs`) point each service at Keycloak to validate access tokens (see [Security](#security)).
 
-`RABBITMQ_HOST` (default `localhost`), `RABBITMQ_PORT` (default `5672`), `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` (default `bazaar` / `bazaar`) point the services that exchange messages at RabbitMQ (see [RabbitMQ](#rabbitmq)).
+`KAFKA_BOOTSTRAP_SERVERS` (default `localhost:9094`) points the services that exchange messages at Kafka (see [Kafka](#kafka)).
 
 In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
@@ -161,25 +161,25 @@ The `/<service>/v3/api-docs` route is defined in code (`ApiDocsRouteConfig`), si
 
 Each service generates its OpenAPI spec with springdoc and serves it at `/v3/api-docs`. The gateway proxies each spec as `/<service>/v3/api-docs` and hosts one Swagger UI for all of them at `http://localhost:8080/swagger-ui.html`, with a dropdown to pick the service. The specs list the gateway (`GATEWAY_URL`, default `http://localhost:8080`) as their server, so "Try it out" requests go through the gateway.
 
-### RabbitMQ
+### Kafka
 
-`infra.yml` runs RabbitMQ 4.1 with the management plugin. Services connect on port 5672 (`RABBITMQ_PORT`) as `bazaar` / `bazaar` (`RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` in `docker/.env`), and the management UI is at `http://localhost:15672` (`RABBITMQ_MANAGEMENT_PORT`) with the same credentials. Its data lives in the `rabbitmq-data` volume.
+`infra.yml` runs Apache Kafka 4.2 in KRaft mode (one combined broker and controller, no ZooKeeper). Containers connect at `kafka:9092` (`KAFKA_BOOTSTRAP_SERVERS` in `docker/.env`). From the host, including the IDE, the broker is at `localhost:9094` (`KAFKA_PORT`), which is the default of `spring.kafka.bootstrap-servers`. Its data lives in the `kafka-data` volume (`KAFKA_LOG_DIRS`). The broker does not create topics on demand (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`); each service declares the topics it publishes and consumes. The image default already covers a single combined node (node id 1, controller listener `CONTROLLER`, replication factor 1, one partition, cluster id `5L6g3nShT-eMCtK--X86sw`), so `docker/.env` only sets the listeners, the controller quorum, the log directory, topic auto-creation and the consumer-group rebalance delay.
 
-The shared `config-repo/application.yaml` turns on publisher confirms and returns with mandatory routing, so a publisher learns when the broker didn't accept a message or couldn't route it. Listeners try a message 3 times and then reject it without requeueing, so a queue with a dead-letter exchange sends it there.
+The shared `config-repo/application.yaml` sets producer acks to `all`, so the outbox relay learns whether the broker accepted a message. A publish to a topic that does not exist fails and the row stays pending. Listeners try a message 3 times and then publish it to `<topic>.dlq`.
 
 #### Messages
 
-Services exchange messages through RabbitMQ in a choreographed saga for checkout. Each service publishes to its own topic exchange, and each consumer has one queue per message type, with a dead-letter queue `<queue>.dlq` on the `bazaar.dlx` exchange:
+Services exchange messages through Kafka in a choreographed saga for checkout. Each message type has its own topic, and each consumer has its own group, with a dead-letter topic `<topic>.dlq`:
 
-| Exchange           | Routing key       | Message                            | Queue                               |
-|--------------------|-------------------|------------------------------------|-------------------------------------|
-| `bazaar.orders`    | `order.placed`    | Order id and items (product, qty)  | `inventory-service.order-placed`    |
-| `bazaar.orders`    | `order.confirmed` | Order id                           | `inventory-service.order-confirmed` |
-| `bazaar.orders`    | `order.cancelled` | Order id                           | `inventory-service.order-cancelled` |
-| `bazaar.inventory` | `stock.reserved`  | Order id                           | `order-service.stock-reserved`      |
-| `bazaar.inventory` | `stock.rejected`  | Order id and reason                | `order-service.stock-rejected`      |
+| Topic                             | Message                           | Group                               |
+|-----------------------------------|-----------------------------------|-------------------------------------|
+| `bazaar.orders.order-placed`      | Order id and items (product, qty) | `inventory-service.order-placed`    |
+| `bazaar.orders.order-confirmed`   | Order id                          | `inventory-service.order-confirmed` |
+| `bazaar.orders.order-cancelled`   | Order id                          | `inventory-service.order-cancelled` |
+| `bazaar.inventory.stock-reserved` | Order id                          | `order-service.stock-reserved`      |
+| `bazaar.inventory.stock-rejected` | Order id and reason               | `order-service.stock-rejected`      |
 
-A service never publishes directly from its business code. It writes the message to an `outbox_message` table in its own database, in the same transaction as the change it describes, and a scheduled relay publishes pending rows every second (`bazaar.outbox.relay-delay`) and marks the confirmed ones sent. A message is never lost when the broker is down, but it can be delivered more than once, so consumers ignore messages they have already handled.
+A service never publishes directly from its business code. It writes the message to an `outbox_message` table in its own database, in the same transaction as the change it describes, and a scheduled relay publishes pending rows every second (`bazaar.outbox.relay-delay`) and marks the acknowledged ones sent. A message is never lost when the broker is down, but it can be delivered more than once, so consumers ignore messages they have already handled.
 
 ### Keycloak
 
@@ -229,7 +229,7 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 
 `/api/orders` works the same way: `order-service` stores the token's `sub` with each order it places. `GET /api/orders` lists the caller's orders, newest first and paged (`page`, `size`, `sort`), and `GET /api/orders/{id}` returns 404 for an order that belongs to someone else, as it does for one that doesn't exist.
 
-`POST /api/orders` checks the products against `catalog-service`, saves the order as `PENDING` and returns 201 (400 if a product doesn't exist). Stock is reserved asynchronously: `inventory-service` reserves every item or none and answers over RabbitMQ (see [Messages](#messages)), and the order becomes `RESERVED`, or `REJECTED` with a `rejectionReason` such as the item that is short. The client polls `GET /api/orders/{id}` for the outcome.
+`POST /api/orders` checks the products against `catalog-service`, saves the order as `PENDING` and returns 201 (400 if a product doesn't exist). Stock is reserved asynchronously: `inventory-service` reserves every item or none and answers over Kafka (see [Messages](#messages)), and the order becomes `RESERVED`, or `REJECTED` with a `rejectionReason` such as the item that is short. The client polls `GET /api/orders/{id}` for the outcome.
 
 Its owner then moves a `RESERVED` order on with `POST /api/orders/{id}/confirm`, which marks it `CONFIRMED` and has `inventory-service` fulfil the reserved stock, or with `POST /api/orders/{id}/cancel`, which marks it `CANCELLED` and has the stock released. Only a `RESERVED` order can be confirmed or cancelled; any other status is a 409.
 
@@ -247,7 +247,7 @@ A service validates a token in two steps, each with its own setting in `config-r
 - `JWT_JWK_SET_URI` is where the service downloads Keycloak's signing keys. They are fetched when the first token arrives, so services start without Keycloak.
 - `JWT_ISSUER_URI` is compared with the token's `iss` claim and is never called.
 
-They are separate because of Docker. Keycloak sets `iss` from the URL the token was requested on, which is `http://localhost:9090` for a client on the host, while a container reaches Keycloak at `http://keycloak:9090`. So `docker/.env` keeps `KEYCLOAK_ISSUER_URI` on `localhost` and points `KEYCLOAK_JWK_SET_URI` at `keycloak`.
+They are separate because of Docker. Keycloak sets `iss` from the URL the token was requested on, which is `http://localhost:9090` for a client on the host, while a container reaches Keycloak at `http://keycloak:9090`. The issuer default in `config-repo/application.yaml` is already that localhost URL, so Docker only overrides `JWT_JWK_SET_URI` (`KEYCLOAK_JWK_SET_URI` in `docker/.env`).
 
 ## Tests
 

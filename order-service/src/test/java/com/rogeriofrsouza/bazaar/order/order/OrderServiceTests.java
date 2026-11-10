@@ -5,7 +5,6 @@ import com.rogeriofrsouza.bazaar.order.catalog.CatalogClient;
 import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
 import com.rogeriofrsouza.bazaar.order.order.OrderPlacedMessage.OrderPlacedItem;
 import com.rogeriofrsouza.bazaar.order.order.OrderResponse.OrderItemResponse;
-import com.rogeriofrsouza.bazaar.order.outbox.Outbox;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -74,7 +73,7 @@ class OrderServiceTests {
                         tuple(keyboard, "Keyboard", new BigDecimal("150.00"), 2),
                         tuple(mouse, "Mouse", new BigDecimal("49.90"), 1)
                 );
-        assertThat(outboxRoutingKeys(placed.id())).containsExactly(OrdersExchange.PLACED);
+        assertThat(outboxTopics(placed.id())).containsExactly(OrdersTopics.PLACED);
 
         OrderPlacedMessage message = jsonMapper.readValue(outboxPayload(placed.id()), OrderPlacedMessage.class);
         assertThat(message.orderId()).isEqualTo(placed.id());
@@ -151,8 +150,8 @@ class OrderServiceTests {
 
         assertThat(confirmed.status()).isEqualTo(OrderStatus.CONFIRMED);
         assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.CONFIRMED);
-        assertThat(outboxRoutingKeys(placed.id()))
-                .containsExactly(OrdersExchange.PLACED, OrdersExchange.CONFIRMED);
+        assertThat(outboxTopics(placed.id()))
+                .containsExactly(OrdersTopics.PLACED, OrdersTopics.CONFIRMED);
     }
 
     @Test
@@ -163,8 +162,8 @@ class OrderServiceTests {
 
         assertThat(cancelled.status()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.CANCELLED);
-        assertThat(outboxRoutingKeys(placed.id()))
-                .containsExactly(OrdersExchange.PLACED, OrdersExchange.CANCELLED);
+        assertThat(outboxTopics(placed.id()))
+                .containsExactly(OrdersTopics.PLACED, OrdersTopics.CANCELLED);
     }
 
     @Test
@@ -175,7 +174,7 @@ class OrderServiceTests {
                 .isThrownBy(() -> orderService.confirm(placed.id(), "subject-1"));
 
         assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.PENDING);
-        assertThat(outboxRoutingKeys(placed.id())).containsExactly(OrdersExchange.PLACED);
+        assertThat(outboxTopics(placed.id())).containsExactly(OrdersTopics.PLACED);
     }
 
     @Test
@@ -186,7 +185,7 @@ class OrderServiceTests {
                 .isThrownBy(() -> orderService.cancel(placed.id(), "subject-2"));
 
         assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.RESERVED);
-        assertThat(outboxRoutingKeys(placed.id())).containsExactly(OrdersExchange.PLACED);
+        assertThat(outboxTopics(placed.id())).containsExactly(OrdersTopics.PLACED);
     }
 
     @Test
@@ -237,15 +236,15 @@ class OrderServiceTests {
         return placed;
     }
 
-    private List<String> outboxRoutingKeys(UUID orderId) {
+    private List<String> outboxTopics(UUID orderId) {
         return jdbcTemplate.queryForList(
-                "SELECT routing_key FROM outbox_message WHERE exchange = ? AND payload LIKE ? ORDER BY created_at",
-                String.class, Outbox.EXCHANGE, "%" + orderId + "%");
+                "SELECT topic FROM outbox_message WHERE payload LIKE ? ORDER BY created_at",
+                String.class, "%" + orderId + "%");
     }
 
     private String outboxPayload(UUID orderId) {
         return jdbcTemplate.queryForObject(
-                "SELECT payload FROM outbox_message WHERE routing_key = ? AND payload LIKE ?",
-                String.class, OrdersExchange.PLACED, "%" + orderId + "%");
+                "SELECT payload FROM outbox_message WHERE topic = ? AND payload LIKE ?",
+                String.class, OrdersTopics.PLACED, "%" + orderId + "%");
     }
 }

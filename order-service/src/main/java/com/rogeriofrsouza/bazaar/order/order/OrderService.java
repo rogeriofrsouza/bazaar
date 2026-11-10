@@ -78,7 +78,7 @@ public class OrderService {
                 .toList();
 
         Order order = orderRepository.save(Order.place(customerSubject, items));
-        outbox.add(OrdersExchange.PLACED, OrderPlacedMessage.from(order));
+        outbox.add(OrdersTopics.PLACED, OrderPlacedMessage.from(order));
         return OrderResponse.from(order);
     }
 
@@ -87,7 +87,7 @@ public class OrderService {
         Order order = findForUpdate(id, customerSubject);
         order.confirm();
         Order saved = orderRepository.save(order);
-        outbox.add(OrdersExchange.CONFIRMED, new OrderConfirmedMessage(id));
+        outbox.add(OrdersTopics.CONFIRMED, new OrderConfirmedMessage(id));
         return OrderResponse.from(saved);
     }
 
@@ -96,7 +96,7 @@ public class OrderService {
         Order order = findForUpdate(id, customerSubject);
         order.cancel();
         Order saved = orderRepository.save(order);
-        outbox.add(OrdersExchange.CANCELLED, new OrderCancelledMessage(id));
+        outbox.add(OrdersTopics.CANCELLED, new OrderCancelledMessage(id));
         return OrderResponse.from(saved);
     }
 
