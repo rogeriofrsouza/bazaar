@@ -2,10 +2,13 @@ package com.rogeriofrsouza.bazaar.order.order;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.relational.core.sql.LockMode;
 import org.springframework.data.relational.repository.Lock;
 import org.springframework.data.repository.ListCrudRepository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,4 +23,12 @@ public interface OrderRepository extends ListCrudRepository<Order, UUID> {
     Optional<Order> findWithLockByIdAndCustomerSubject(UUID id, String customerSubject);
 
     Page<Order> findByCustomerSubject(String customerSubject, Pageable pageable);
+
+    @Query("""
+            SELECT * FROM orders
+            WHERE status = 'RESERVED' AND expires_at <= :now
+            ORDER BY expires_at, id
+            LIMIT :limit
+            FOR UPDATE SKIP LOCKED""")
+    List<Order> findExpiredForUpdate(Instant now, int limit);
 }

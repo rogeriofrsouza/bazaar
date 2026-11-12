@@ -12,6 +12,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.within;
 
 class OrderTests {
@@ -53,7 +54,7 @@ class OrderTests {
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new Order(UUID.randomUUID(), "subject-1", OrderStatus.PENDING,
-                        new BigDecimal("150.00"), Set.of(item), null, null, null))
+                        new BigDecimal("150.00"), Set.of(item), null, null, null, null))
                 .withMessage("Order total must match its items");
     }
 
@@ -67,11 +68,13 @@ class OrderTests {
     @Test
     void reservesPendingOrder() {
         Order order = pendingOrder();
+        Instant expiresAt = Instant.now().plus(1, ChronoUnit.HOURS);
 
-        order.reserve();
+        order.reserve(expiresAt);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
         assertThat(order.getRejectionReason()).isNull();
+        assertThat(order.getExpiresAt()).isEqualTo(expiresAt);
     }
 
     @Test
@@ -97,7 +100,7 @@ class OrderTests {
     void reservesOrRejectsOnlyPendingOrders() {
         Order order = reservedOrder();
 
-        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(order::reserve)
+        assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(() -> order.reserve(Instant.now()))
                 .withMessage("Order " + order.getId() + " is RESERVED, not PENDING");
         assertThatExceptionOfType(OrderNotPendingException.class).isThrownBy(() -> order.reject("Out of stock"));
         assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
@@ -130,12 +133,51 @@ class OrderTests {
         assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(order::cancel);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
 
-        order.reserve();
+        order.reserve(Instant.now());
         order.cancel();
 
         assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(order::confirm)
                 .withMessage("Order " + order.getId() + " is CANCELLED, not RESERVED");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void expiresOverdueReservedOrder() {
+        Instant expiresAt = Instant.now();
+        Order order = pendingOrder();
+        order.reserve(expiresAt);
+
+        assertThat(order.isOverdue(expiresAt.minusMillis(1))).isFalse();
+        assertThat(order.isOverdue(expiresAt)).isTrue();
+
+        order.expire(expiresAt);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.EXPIRED);
+        assertThat(order.isOverdue(expiresAt)).isFalse();
+    }
+
+    @Test
+    void doesNotExpireBeforeDeadline() {
+        Instant expiresAt = Instant.now().plus(1, ChronoUnit.HOURS);
+        Order order = pendingOrder();
+        order.reserve(expiresAt);
+
+        assertThatIllegalStateException().isThrownBy(() -> order.expire(Instant.now()))
+                .withMessage("Order " + order.getId() + " does not expire until " + expiresAt);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
+    }
+
+    @Test
+    void expiresOnlyReservedOrders() {
+        Instant later = Instant.now().plus(2, ChronoUnit.HOURS);
+        Order pending = pendingOrder();
+        Order confirmed = reservedOrder();
+        confirmed.confirm();
+
+        assertThat(pending.isOverdue(later)).isFalse();
+        assertThat(confirmed.isOverdue(later)).isFalse();
+        assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(() -> pending.expire(later));
+        assertThatExceptionOfType(OrderNotReservedException.class).isThrownBy(() -> confirmed.expire(later));
     }
 
     private static Order pendingOrder() {
@@ -145,7 +187,7 @@ class OrderTests {
 
     private static Order reservedOrder() {
         Order order = pendingOrder();
-        order.reserve();
+        order.reserve(Instant.now().plus(1, ChronoUnit.HOURS));
         return order;
     }
 }

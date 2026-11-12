@@ -32,6 +32,8 @@ public class Order {
 
     private @Nullable String rejectionReason;
 
+    private @Nullable Instant expiresAt;
+
     @Version
     private @Nullable Long version;
 
@@ -48,6 +50,7 @@ public class Order {
             BigDecimal total,
             Set<OrderItem> items,
             @Nullable String rejectionReason,
+            @Nullable Instant expiresAt,
             @Nullable Instant createdAt,
             @Nullable Instant updatedAt
     ) {
@@ -60,6 +63,7 @@ public class Order {
         this.total = total;
         this.items = Set.copyOf(items);
         this.rejectionReason = rejectionReason;
+        this.expiresAt = expiresAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -74,13 +78,15 @@ public class Order {
                 itemSet,
                 null,
                 null,
+                null,
                 null
         );
     }
 
-    public void reserve() {
+    public void reserve(Instant expiresAt) {
         requirePending();
         status = OrderStatus.RESERVED;
+        this.expiresAt = expiresAt;
     }
 
     public void reject(String reason) {
@@ -98,6 +104,16 @@ public class Order {
     public void cancel() {
         requireReserved();
         status = OrderStatus.CANCELLED;
+    }
+
+    public boolean isOverdue(Instant now) {
+        return status == OrderStatus.RESERVED && expiresAt != null && !expiresAt.isAfter(now);
+    }
+
+    public void expire(Instant now) {
+        requireReserved();
+        Assert.state(isOverdue(now), () -> "Order " + id + " does not expire until " + expiresAt);
+        status = OrderStatus.EXPIRED;
     }
 
     private void requirePending() {
@@ -140,6 +156,10 @@ public class Order {
 
     public @Nullable String getRejectionReason() {
         return rejectionReason;
+    }
+
+    public @Nullable Instant getExpiresAt() {
+        return expiresAt;
     }
 
     public @Nullable Instant getCreatedAt() {

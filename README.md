@@ -176,6 +176,7 @@ Services exchange messages through RabbitMQ in a choreographed saga for checkout
 | `bazaar.orders`    | `order.placed`    | Order id and items (product, qty)  | `inventory-service.order-placed`    |
 | `bazaar.orders`    | `order.confirmed` | Order id                           | `inventory-service.order-confirmed` |
 | `bazaar.orders`    | `order.cancelled` | Order id                           | `inventory-service.order-cancelled` |
+| `bazaar.orders`    | `order.expired`   | Order id                           | `inventory-service.order-expired`   |
 | `bazaar.inventory` | `stock.reserved`  | Order id                           | `order-service.stock-reserved`      |
 | `bazaar.inventory` | `stock.rejected`  | Order id and reason                | `order-service.stock-rejected`      |
 
@@ -232,6 +233,8 @@ Only the `GET` method is opened on the public paths, so an endpoint added later 
 `POST /api/orders` checks the products against `catalog-service`, saves the order as `PENDING` and returns 201 (400 if a product doesn't exist). Stock is reserved asynchronously: `inventory-service` reserves every item or none and answers over RabbitMQ (see [Messages](#messages)), and the order becomes `RESERVED`, or `REJECTED` with a `rejectionReason` such as the item that is short. The client polls `GET /api/orders/{id}` for the outcome.
 
 Its owner then moves a `RESERVED` order on with `POST /api/orders/{id}/confirm`, which marks it `CONFIRMED` and has `inventory-service` fulfil the reserved stock, or with `POST /api/orders/{id}/cancel`, which marks it `CANCELLED` and has the stock released. Only a `RESERVED` order can be confirmed or cancelled; any other status is a 409.
+
+A reservation doesn't hold stock forever. When an order becomes `RESERVED` it gets an `expiresAt` deadline, 1 hour later by default (`bazaar.orders.reservation-ttl` in `config-repo/order-service.yaml`). Every 5 minutes (`bazaar.orders.expiry-check-delay`), a scheduled job invokes the expiry use case in `order-service`. The service locks up to 100 overdue `RESERVED` orders, marks them `EXPIRED` and adds an `order.expired` message for each to the outbox in one transaction. If the batch fails, all its changes roll back and it can be retried on the next run. `inventory-service` consumes the expiry message and releases the stock, marking its reservation `RELEASED`. Manual cancellation remains `CANCELLED` and publishes `order.cancelled`. Confirming an order already marked `EXPIRED` is a 409. Expiry and the owner's confirm or cancel lock the order row, so only one of them wins.
 
 To get a token for a test user, use the password grant on the `bazaar-web` client and send the `access_token` from the response as the bearer token:
 

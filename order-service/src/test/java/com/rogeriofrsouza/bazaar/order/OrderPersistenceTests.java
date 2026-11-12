@@ -9,9 +9,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +34,9 @@ class OrderPersistenceTests {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Test
     void savesAndLoadsOrderWithItems() {
@@ -83,9 +92,11 @@ class OrderPersistenceTests {
         )));
         Order locked = orderRepository.findWithLockByIdAndCustomerSubject(placed.getId(), "subject-1").orElseThrow();
 
-        locked.reserve();
+        Instant expiresAt = Instant.now().plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MICROS);
+        locked.reserve(expiresAt);
         orderRepository.save(locked);
         Order reserved = orderRepository.findWithLockById(placed.getId()).orElseThrow();
+        assertThat(reserved.getExpiresAt()).isEqualTo(expiresAt);
         reserved.confirm();
         orderRepository.save(reserved);
 
@@ -109,6 +120,72 @@ class OrderPersistenceTests {
         Order rejected = orderRepository.findById(placed.getId()).orElseThrow();
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getRejectionReason()).isEqualTo("Only 1 units available");
+    }
+
+    @Test
+    void loadsBoundedBatchOfOverdueOrdersWithItems() {
+        Instant now = Instant.parse("2020-01-01T00:00:00Z");
+        Order first = overdueOrder(now.minusSeconds(2));
+        Order second = overdueOrder(now.minusSeconds(1));
+
+        List<Order> batch = orderRepository.findExpiredForUpdate(now, 1);
+
+        assertThat(batch).extracting(Order::getId).containsExactly(first.getId());
+        Order loaded = batch.getFirst();
+        assertThat(loaded.getItems()).extracting(OrderItem::getId)
+                .containsExactlyInAnyOrderElementsOf(first.getItems().stream().map(OrderItem::getId).toList());
+
+        loaded.expire(now);
+        orderRepository.save(loaded);
+
+        Order expired = orderRepository.findById(first.getId()).orElseThrow();
+        assertThat(expired.getStatus()).isEqualTo(OrderStatus.EXPIRED);
+        assertThat(expired.getItems()).extracting(OrderItem::getId)
+                .containsExactlyInAnyOrderElementsOf(first.getItems().stream().map(OrderItem::getId).toList());
+        assertThat(versionOf(first.getId())).isEqualTo(1);
+        assertThat(orderRepository.findExpiredForUpdate(now, 10))
+                .extracting(Order::getId).containsExactly(second.getId());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void skipsOrdersLockedByAnotherTransaction() {
+        Instant now = Instant.parse("2020-01-01T00:00:00Z");
+        Order first = overdueOrder(now.minusSeconds(2));
+        Order second = overdueOrder(now.minusSeconds(1));
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.setTimeout(5);
+
+        try {
+            transaction.executeWithoutResult(_ -> {
+                List<Order> locked = orderRepository.findExpiredForUpdate(now, 1);
+                assertThat(locked).extracting(Order::getId).containsExactly(first.getId());
+
+                transaction.executeWithoutResult(_ ->
+                        assertThat(orderRepository.findExpiredForUpdate(now, 10))
+                                .extracting(Order::getId).containsExactly(second.getId()));
+
+                Order order = locked.getFirst();
+                order.confirm();
+                orderRepository.save(order);
+            });
+
+            transaction.executeWithoutResult(_ ->
+                    assertThat(orderRepository.findExpiredForUpdate(now, 10))
+                            .extracting(Order::getId).containsExactly(second.getId()));
+        } finally {
+            orderRepository.deleteAllById(List.of(first.getId(), second.getId()));
+        }
+    }
+
+    private Order overdueOrder(Instant expiresAt) {
+        Order order = Order.place("subject-1", List.of(
+                OrderItem.create(UUID.randomUUID(), "Keyboard", new BigDecimal("150.00"), 2),
+                OrderItem.create(UUID.randomUUID(), "Mouse", new BigDecimal("49.90"), 1)
+        ));
+        order.reserve(expiresAt);
+        return orderRepository.save(order);
     }
 
     private Long versionOf(UUID orderId) {

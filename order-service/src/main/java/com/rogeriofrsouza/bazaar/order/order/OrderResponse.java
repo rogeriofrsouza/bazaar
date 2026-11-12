@@ -12,6 +12,7 @@ public record OrderResponse(
         UUID id,
         OrderStatus status,
         @Nullable String rejectionReason,
+        @Nullable Instant expiresAt,
         BigDecimal total,
         Instant createdAt,
         List<OrderItemResponse> items
@@ -26,6 +27,7 @@ public record OrderResponse(
                 order.getId(),
                 order.getStatus(),
                 order.getRejectionReason(),
+                order.getExpiresAt(),
                 order.getTotal(),
                 Objects.requireNonNull(order.getCreatedAt(), "Order must be saved before it is mapped"),
                 items

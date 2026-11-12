@@ -5,6 +5,7 @@ import com.rogeriofrsouza.bazaar.order.catalog.CatalogProduct;
 import com.rogeriofrsouza.bazaar.order.outbox.Outbox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,15 +28,19 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+    private static final int EXPIRY_BATCH_SIZE = 100;
 
     private final OrderRepository orderRepository;
     private final CatalogClient catalogClient;
     private final Outbox outbox;
+    private final Duration reservationTtl;
 
-    OrderService(OrderRepository orderRepository, CatalogClient catalogClient, Outbox outbox) {
+    OrderService(OrderRepository orderRepository, CatalogClient catalogClient, Outbox outbox,
+                 @Value("${bazaar.orders.reservation-ttl}") Duration reservationTtl) {
         this.orderRepository = orderRepository;
         this.catalogClient = catalogClient;
         this.outbox = outbox;
+        this.reservationTtl = reservationTtl;
     }
 
     @Transactional(readOnly = true)
@@ -102,12 +109,22 @@ public class OrderService {
 
     @Transactional
     public void markReserved(StockReservedMessage message) {
-        changePending(message.orderId(), StockReservedMessage.class, Order::reserve);
+        changePending(message.orderId(), StockReservedMessage.class,
+                order -> order.reserve(Instant.now().plus(reservationTtl)));
     }
 
     @Transactional
     public void markRejected(StockRejectedMessage message) {
         changePending(message.orderId(), StockRejectedMessage.class, order -> order.reject(message.reason()));
+    }
+
+    @Transactional
+    public void expireOverdueOrders() {
+        Instant now = Instant.now();
+        List<Order> overdue = orderRepository.findExpiredForUpdate(now, EXPIRY_BATCH_SIZE);
+        overdue.forEach(order -> order.expire(now));
+        orderRepository.saveAll(overdue);
+        overdue.forEach(order -> outbox.add(OrdersExchange.EXPIRED, new OrderExpiredMessage(order.getId())));
     }
 
     private void changePending(UUID orderId, Class<?> messageType, Consumer<Order> change) {

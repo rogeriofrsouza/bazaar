@@ -16,10 +16,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,8 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
 @Import(ContainersConfig.class)
@@ -43,8 +51,14 @@ class OrderServiceTests {
     @Autowired
     JsonMapper jsonMapper;
 
+    @Autowired
+    OrderExpiryJob orderExpiryJob;
+
     @MockitoBean
     CatalogClient catalogClient;
+
+    @MockitoSpyBean
+    Outbox outbox;
 
     @Test
     void placesPendingOrderWithCatalogPrices() {
@@ -76,7 +90,8 @@ class OrderServiceTests {
                 );
         assertThat(outboxRoutingKeys(placed.id())).containsExactly(OrdersExchange.PLACED);
 
-        OrderPlacedMessage message = jsonMapper.readValue(outboxPayload(placed.id()), OrderPlacedMessage.class);
+        OrderPlacedMessage message = jsonMapper.readValue(
+                outboxPayload(placed.id(), OrdersExchange.PLACED), OrderPlacedMessage.class);
         assertThat(message.orderId()).isEqualTo(placed.id());
         assertThat(message.items()).containsExactlyInAnyOrder(
                 new OrderPlacedItem(keyboard, 2),
@@ -118,6 +133,7 @@ class OrderServiceTests {
         OrderResponse order = orderService.findById(placed.id(), "subject-1");
         assertThat(order.status()).isEqualTo(OrderStatus.RESERVED);
         assertThat(order.rejectionReason()).isNull();
+        assertThat(order.expiresAt()).isCloseTo(Instant.now().plus(1, ChronoUnit.HOURS), within(1, ChronoUnit.MINUTES));
     }
 
     @Test
@@ -190,6 +206,100 @@ class OrderServiceTests {
     }
 
     @Test
+    @Transactional
+    void expiresOverdueReservedOrdersInOneBatch() {
+        OrderResponse first = reservedOrder("subject-1");
+        OrderResponse second = reservedOrder("subject-1");
+        setDeadline(first.id(), Instant.now().minusSeconds(2));
+        setDeadline(second.id(), Instant.now().minusSeconds(1));
+
+        orderService.expireOverdueOrders();
+        orderService.expireOverdueOrders();
+
+        for (OrderResponse order : List.of(first, second)) {
+            assertThat(orderService.findById(order.id(), "subject-1").status()).isEqualTo(OrderStatus.EXPIRED);
+            assertThat(outboxRoutingKeys(order.id()))
+                    .containsExactly(OrdersExchange.PLACED, OrdersExchange.EXPIRED);
+            OrderExpiredMessage message = jsonMapper.readValue(
+                    outboxPayload(order.id(), OrdersExchange.EXPIRED), OrderExpiredMessage.class);
+            assertThat(message).isEqualTo(new OrderExpiredMessage(order.id()));
+        }
+        assertThatExceptionOfType(OrderNotReservedException.class)
+                .isThrownBy(() -> orderService.confirm(first.id(), "subject-1"))
+                .withMessage("Order " + first.id() + " is EXPIRED, not RESERVED");
+    }
+
+    @Test
+    @Transactional
+    void doesNotExpireOrdersThatAreNotOverdue() {
+        OrderResponse due = reservedOrder("subject-1");
+        OrderResponse confirmed = reservedOrder("subject-1");
+        orderService.confirm(confirmed.id(), "subject-1");
+        setDeadline(confirmed.id(), Instant.now().minusSeconds(1));
+        OrderResponse cancelled = reservedOrder("subject-1");
+        orderService.cancel(cancelled.id(), "subject-1");
+        setDeadline(cancelled.id(), Instant.now().minusSeconds(1));
+        OrderResponse pending = placeOrder("subject-1");
+        OrderResponse rejected = placeOrder("subject-1");
+        orderService.markRejected(new StockRejectedMessage(rejected.id(), "Out of stock"));
+
+        orderService.expireOverdueOrders();
+
+        assertThat(orderService.findById(due.id(), "subject-1").status()).isEqualTo(OrderStatus.RESERVED);
+        assertThat(orderService.findById(confirmed.id(), "subject-1").status()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(orderService.findById(cancelled.id(), "subject-1").status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(orderService.findById(pending.id(), "subject-1").status()).isEqualTo(OrderStatus.PENDING);
+        assertThat(orderService.findById(rejected.id(), "subject-1").status()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(outboxRoutingKeys(due.id())).containsExactly(OrdersExchange.PLACED);
+        assertThat(outboxRoutingKeys(confirmed.id()))
+                .containsExactly(OrdersExchange.PLACED, OrdersExchange.CONFIRMED);
+        assertThat(outboxRoutingKeys(cancelled.id()))
+                .containsExactly(OrdersExchange.PLACED, OrdersExchange.CANCELLED);
+        assertThat(outboxRoutingKeys(pending.id())).containsExactly(OrdersExchange.PLACED);
+        assertThat(outboxRoutingKeys(rejected.id())).containsExactly(OrdersExchange.PLACED);
+    }
+
+    @Test
+    void rollsBackEntireExpiryBatchWhenOutboxFails() {
+        OrderResponse first = reservedOrder("subject-1");
+        OrderResponse second = reservedOrder("subject-1");
+        setDeadline(first.id(), Instant.now().minusSeconds(2));
+        setDeadline(second.id(), Instant.now().minusSeconds(1));
+        Outbox target = AopTestUtils.getUltimateTargetObject(outbox);
+        doThrow(new IllegalStateException("Outbox unavailable"))
+                .when(target).add(OrdersExchange.EXPIRED, new OrderExpiredMessage(second.id()));
+
+        try {
+            assertThatThrownBy(orderService::expireOverdueOrders)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Outbox unavailable");
+
+            for (OrderResponse order : List.of(first, second)) {
+                assertThat(orderService.findById(order.id(), "subject-1").status()).isEqualTo(OrderStatus.RESERVED);
+                assertThat(outboxRoutingKeys(order.id())).containsExactly(OrdersExchange.PLACED);
+            }
+        } finally {
+            setDeadline(first.id(), Instant.now().plus(1, ChronoUnit.HOURS));
+            setDeadline(second.id(), Instant.now().plus(1, ChronoUnit.HOURS));
+        }
+    }
+
+    @Test
+    @Transactional
+    void expiryJobExpiresOverdueOrders() {
+        OrderResponse overdue = reservedOrder("subject-1");
+        OrderResponse due = reservedOrder("subject-1");
+        setDeadline(overdue.id(), Instant.now().minusSeconds(1));
+
+        orderExpiryJob.expireOverdueOrders();
+
+        assertThat(orderService.findById(overdue.id(), "subject-1").status()).isEqualTo(OrderStatus.EXPIRED);
+        assertThat(outboxRoutingKeys(overdue.id()))
+                .containsExactly(OrdersExchange.PLACED, OrdersExchange.EXPIRED);
+        assertThat(orderService.findById(due.id(), "subject-1").status()).isEqualTo(OrderStatus.RESERVED);
+    }
+
+    @Test
     void listsOnlyOwnOrdersNewestFirst() {
         String owner = "subject-" + UUID.randomUUID();
 
@@ -243,9 +353,13 @@ class OrderServiceTests {
                 String.class, Outbox.EXCHANGE, "%" + orderId + "%");
     }
 
-    private String outboxPayload(UUID orderId) {
+    private void setDeadline(UUID orderId, Instant expiresAt) {
+        jdbcTemplate.update("UPDATE orders SET expires_at = ? WHERE id = ?", Timestamp.from(expiresAt), orderId);
+    }
+
+    private String outboxPayload(UUID orderId, String routingKey) {
         return jdbcTemplate.queryForObject(
                 "SELECT payload FROM outbox_message WHERE routing_key = ? AND payload LIKE ?",
-                String.class, OrdersExchange.PLACED, "%" + orderId + "%");
+                String.class, routingKey, "%" + orderId + "%");
     }
 }
