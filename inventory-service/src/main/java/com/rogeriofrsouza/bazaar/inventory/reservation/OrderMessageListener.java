@@ -26,4 +26,9 @@ class OrderMessageListener {
     void onOrderCancelled(OrderCancelledMessage message) {
         stockReservationService.release(message);
     }
+
+    @RabbitListener(queues = OrdersExchange.EXPIRED_QUEUE)
+    void onOrderExpired(OrderExpiredMessage message) {
+        stockReservationService.release(message);
+    }
 }

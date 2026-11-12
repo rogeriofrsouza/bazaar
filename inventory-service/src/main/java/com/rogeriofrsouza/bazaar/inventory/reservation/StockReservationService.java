@@ -76,6 +76,11 @@ public class StockReservationService {
         change(message.orderId(), OrderCancelledMessage.ROUTING_KEY, InventoryItem::release, StockReservation::release);
     }
 
+    @Transactional
+    public void release(OrderExpiredMessage message) {
+        change(message.orderId(), OrdersExchange.EXPIRED, InventoryItem::release, StockReservation::release);
+    }
+
     private void reject(UUID orderId, Map<UUID, Integer> quantities, String reason) {
         stockReservationRepository.save(StockReservation.rejected(orderId, quantities));
         outbox.add(StockRejectedMessage.ROUTING_KEY, new StockRejectedMessage(orderId, reason));

@@ -4,6 +4,7 @@ import com.rogeriofrsouza.bazaar.inventory.outbox.Outbox;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderCancelledMessage;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderConfirmedMessage;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderPlacedMessage;
+import com.rogeriofrsouza.bazaar.inventory.reservation.OrdersExchange;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +20,6 @@ import java.util.Map;
 @EnableScheduling
 class RabbitConfig {
 
-    private static final String ORDERS_EXCHANGE = "bazaar.orders";
     private static final String DEAD_LETTER_EXCHANGE = "bazaar.dlx";
 
     @Bean
@@ -34,7 +34,7 @@ class RabbitConfig {
 
     @Bean
     TopicExchange ordersExchange() {
-        return new TopicExchange(ORDERS_EXCHANGE);
+        return new TopicExchange(OrdersExchange.NAME);
     }
 
     @Bean
@@ -47,7 +47,8 @@ class RabbitConfig {
         Map<String, String> routingKeys = Map.of(
                 OrderPlacedMessage.QUEUE, OrderPlacedMessage.ROUTING_KEY,
                 OrderConfirmedMessage.QUEUE, OrderConfirmedMessage.ROUTING_KEY,
-                OrderCancelledMessage.QUEUE, OrderCancelledMessage.ROUTING_KEY
+                OrderCancelledMessage.QUEUE, OrderCancelledMessage.ROUTING_KEY,
+                OrdersExchange.EXPIRED_QUEUE, OrdersExchange.EXPIRED
         );
 
         List<Declarable> declarables = new ArrayList<>();

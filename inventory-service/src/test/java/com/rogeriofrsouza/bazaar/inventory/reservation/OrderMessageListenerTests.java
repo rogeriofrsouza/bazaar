@@ -33,6 +33,9 @@ class OrderMessageListenerTests {
     private StockReservationRepository stockReservationRepository;
 
     @Autowired
+    private StockReservationService stockReservationService;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Test
@@ -54,5 +57,22 @@ class OrderMessageListenerTests {
                 "SELECT count(*) FROM outbox_message WHERE routing_key = ? AND payload LIKE ? AND sent_at IS NULL",
                 Integer.class, StockReservedMessage.ROUTING_KEY, "%" + orderId + "%"))
                 .isEqualTo(1);
+    }
+
+    @Test
+    void releasesStockForExpiredOrder() {
+        UUID keyboard = inventoryItemService.create(new CreateInventoryItemRequest(UUID.randomUUID(), 10)).productId();
+        UUID orderId = UUID.randomUUID();
+        stockReservationService.reserve(new OrderPlacedMessage(orderId, List.of(new OrderPlacedItem(keyboard, 2))));
+
+        rabbitTemplate.convertAndSend(OrdersExchange.NAME, OrdersExchange.EXPIRED, new OrderExpiredMessage(orderId));
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(stockReservationRepository.findByOrderId(orderId))
+                    .hasValueSatisfying(reservation ->
+                            assertThat(reservation.getStatus()).isEqualTo(StockReservationStatus.RELEASED));
+            assertThat(inventoryItemService.findByProductId(keyboard))
+                    .isEqualTo(new InventoryItemResponse(keyboard, 10, 0, 10));
+        });
     }
 }

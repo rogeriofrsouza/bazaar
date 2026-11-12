@@ -154,6 +154,37 @@ class StockReservationServiceTests {
     }
 
     @Test
+    void releasesExpiredStockOnce() {
+        UUID keyboard = createItem(10);
+        UUID orderId = reserve(keyboard, 3);
+        OrderExpiredMessage message = new OrderExpiredMessage(orderId);
+
+        stockReservationService.release(message);
+        stockReservationService.release(message);
+        stockReservationService.release(new OrderCancelledMessage(orderId));
+
+        assertThat(stockReservationRepository.findByOrderId(orderId).orElseThrow().getStatus())
+                .isEqualTo(StockReservationStatus.RELEASED);
+        assertThat(inventoryItemService.findByProductId(keyboard))
+                .isEqualTo(new InventoryItemResponse(keyboard, 10, 0, 10));
+    }
+
+    @Test
+    void ignoresExpiryWithoutReservedStock() {
+        UUID keyboard = createItem(10);
+        UUID orderId = reserve(keyboard, 3);
+        stockReservationService.fulfil(new OrderConfirmedMessage(orderId));
+
+        stockReservationService.release(new OrderExpiredMessage(orderId));
+        stockReservationService.release(new OrderExpiredMessage(UUID.randomUUID()));
+
+        assertThat(stockReservationRepository.findByOrderId(orderId).orElseThrow().getStatus())
+                .isEqualTo(StockReservationStatus.FULFILLED);
+        assertThat(inventoryItemService.findByProductId(keyboard))
+                .isEqualTo(new InventoryItemResponse(keyboard, 7, 0, 7));
+    }
+
+    @Test
     void ignoresFulfilAndReleaseWithoutReservedStock() {
         UUID keyboard = createItem(10);
         UUID orderId = reserve(keyboard, 3);
