@@ -2,6 +2,7 @@ package com.rogeriofrsouza.bazaar.catalog.product;
 
 import com.rogeriofrsouza.bazaar.catalog.category.Category;
 import com.rogeriofrsouza.bazaar.catalog.category.CategoryRepository;
+import com.rogeriofrsouza.bazaar.catalog.outbox.Outbox;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,12 +29,14 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final JdbcAggregateOperations jdbcAggregateOperations;
+    private final Outbox outbox;
 
     ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-                   JdbcAggregateOperations jdbcAggregateOperations) {
+                   JdbcAggregateOperations jdbcAggregateOperations, Outbox outbox) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.jdbcAggregateOperations = jdbcAggregateOperations;
+        this.outbox = outbox;
     }
 
     @Transactional(readOnly = true)
@@ -85,6 +88,8 @@ public class ProductService {
                 request.imageUrl(),
                 category.getId()
         );
-        return ProductResponse.from(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        outbox.add(CatalogExchange.PRODUCT_CREATED, new ProductCreatedMessage(saved.getId()));
+        return ProductResponse.from(saved);
     }
 }

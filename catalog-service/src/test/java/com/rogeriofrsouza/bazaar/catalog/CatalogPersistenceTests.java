@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -40,6 +41,9 @@ class CatalogPersistenceTests {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void createsAndReadsProduct() {
         ProductResponse created = productService.create(request("Phone X", "phones"));
@@ -54,6 +58,10 @@ class CatalogPersistenceTests {
         Product product = productRepository.findByIdAndStatus(id, ProductStatus.ACTIVE).orElseThrow();
         assertThat(product.getCreatedAt()).isNotNull();
         assertThat(product.getUpdatedAt()).isNotNull();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM outbox_message WHERE exchange = ? AND routing_key = ? AND payload LIKE ?",
+                Integer.class, "bazaar.catalog", "product.created", "%" + id + "%"))
+                .isEqualTo(1);
     }
 
     @Test
