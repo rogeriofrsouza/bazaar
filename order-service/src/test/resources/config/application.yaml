@@ -35,4 +35,5 @@ bazaar:
   outbox:
     relay-delay: 1h
   orders:
+    reservation-ttl: 1h
     expiry-check-delay: 1h
