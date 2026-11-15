@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -99,7 +100,13 @@ class OutboxRelay {
     }
 
     private static boolean isConfirmed(CorrelationData correlationData) {
-        Confirm confirm = correlationData.getFuture().getNow(null);
+        CompletableFuture<Confirm> future = correlationData.getFuture();
+        if (future.state() != Future.State.SUCCESS) {
+            log.warn("Outbox message {} was not confirmed and stays pending", correlationData.getId());
+            return false;
+        }
+
+        Confirm confirm = future.resultNow();
         if (!confirm.ack()) {
             log.warn("Outbox message {} was nacked and stays pending: {}", correlationData.getId(), confirm.reason());
             return false;
