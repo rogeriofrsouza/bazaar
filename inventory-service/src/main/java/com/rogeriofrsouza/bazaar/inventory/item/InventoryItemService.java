@@ -2,6 +2,8 @@ package com.rogeriofrsouza.bazaar.inventory.item;
 
 import com.rogeriofrsouza.bazaar.inventory.item.ReservationRequest.ReservationItemRequest;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.core.JdbcAggregateOperations;
@@ -20,6 +22,8 @@ import static com.rogeriofrsouza.bazaar.inventory.item.InventoryItemCriteria.pro
 
 @Service
 public class InventoryItemService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryItemService.class);
 
     private final InventoryItemRepository inventoryItemRepository;
     private final JdbcAggregateOperations jdbcAggregateOperations;
@@ -58,6 +62,16 @@ public class InventoryItemService {
 
         InventoryItem item = InventoryItem.create(productId, request.quantityOnHand());
         return InventoryItemResponse.from(inventoryItemRepository.save(item));
+    }
+
+    @Transactional
+    public void initialize(UUID productId) {
+        if (inventoryItemRepository.existsByProductId(productId)) {
+            log.info("Ignoring duplicate {} for product {}", CatalogExchange.PRODUCT_CREATED, productId);
+            return;
+        }
+
+        inventoryItemRepository.save(InventoryItem.create(productId, 0));
     }
 
     @Transactional

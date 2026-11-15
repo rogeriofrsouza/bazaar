@@ -1,5 +1,6 @@
 package com.rogeriofrsouza.bazaar.inventory.config;
 
+import com.rogeriofrsouza.bazaar.inventory.item.CatalogExchange;
 import com.rogeriofrsouza.bazaar.inventory.outbox.Outbox;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderCancelledMessage;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderConfirmedMessage;
@@ -7,6 +8,7 @@ import com.rogeriofrsouza.bazaar.inventory.reservation.OrderPlacedMessage;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrdersExchange;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -38,12 +40,18 @@ class RabbitConfig {
     }
 
     @Bean
+    TopicExchange catalogExchange() {
+        return new TopicExchange(CatalogExchange.NAME);
+    }
+
+    @Bean
     DirectExchange deadLetterExchange() {
         return new DirectExchange(DEAD_LETTER_EXCHANGE);
     }
 
     @Bean
-    Declarables orderQueues(TopicExchange ordersExchange, DirectExchange deadLetterExchange) {
+    Declarables orderQueues(@Qualifier("ordersExchange") TopicExchange ordersExchange,
+                            DirectExchange deadLetterExchange) {
         Map<String, String> routingKeys = Map.of(
                 OrderPlacedMessage.QUEUE, OrderPlacedMessage.ROUTING_KEY,
                 OrderConfirmedMessage.QUEUE, OrderConfirmedMessage.ROUTING_KEY,
@@ -66,5 +74,24 @@ class RabbitConfig {
             declarables.add(BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(deadLetterQueueName));
         });
         return new Declarables(declarables);
+    }
+
+    @Bean
+    Declarables productQueues(@Qualifier("catalogExchange") TopicExchange catalogExchange,
+                              DirectExchange deadLetterExchange) {
+        String queueName = CatalogExchange.PRODUCT_CREATED_QUEUE;
+        String deadLetterQueueName = queueName + ".dlq";
+        Queue queue = QueueBuilder.durable(queueName)
+                .deadLetterExchange(DEAD_LETTER_EXCHANGE)
+                .deadLetterRoutingKey(deadLetterQueueName)
+                .build();
+        Queue deadLetterQueue = QueueBuilder.durable(deadLetterQueueName).build();
+
+        return new Declarables(
+                queue,
+                BindingBuilder.bind(queue).to(catalogExchange).with(CatalogExchange.PRODUCT_CREATED),
+                deadLetterQueue,
+                BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(deadLetterQueueName)
+        );
     }
 }

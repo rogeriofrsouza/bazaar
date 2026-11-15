@@ -2,8 +2,10 @@ package com.rogeriofrsouza.bazaar.inventory.reservation;
 
 import com.rogeriofrsouza.bazaar.inventory.ContainersConfig;
 import com.rogeriofrsouza.bazaar.inventory.item.CreateInventoryItemRequest;
+import com.rogeriofrsouza.bazaar.inventory.item.CatalogExchange;
 import com.rogeriofrsouza.bazaar.inventory.item.InventoryItemResponse;
 import com.rogeriofrsouza.bazaar.inventory.item.InventoryItemService;
+import com.rogeriofrsouza.bazaar.inventory.item.ProductCreatedMessage;
 import com.rogeriofrsouza.bazaar.inventory.reservation.OrderPlacedMessage.OrderPlacedItem;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -37,6 +39,24 @@ class OrderMessageListenerTests {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Test
+    void createsZeroStockInventoryItemForCreatedProductAndIgnoresDuplicates() {
+        UUID productId = UUID.randomUUID();
+        ProductCreatedMessage message = new ProductCreatedMessage(productId);
+
+        rabbitTemplate.convertAndSend(CatalogExchange.NAME, CatalogExchange.PRODUCT_CREATED, message);
+        rabbitTemplate.convertAndSend(CatalogExchange.NAME, CatalogExchange.PRODUCT_CREATED, message);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(inventoryItemService.findByProductId(productId))
+                    .isEqualTo(new InventoryItemResponse(productId, 0, 0, 0));
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM inventory_item WHERE product_id = ?",
+                    Integer.class, productId))
+                    .isEqualTo(1);
+        });
+    }
 
     @Test
     void reservesStockForPlacedOrder() {
