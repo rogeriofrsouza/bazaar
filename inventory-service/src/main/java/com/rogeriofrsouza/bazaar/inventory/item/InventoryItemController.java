@@ -2,7 +2,6 @@ package com.rogeriofrsouza.bazaar.inventory.item;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
-import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +32,7 @@ class InventoryItemController {
 
     @GetMapping
     PagedModel<InventoryItemResponse> list(
-            @RequestParam(required = false) @Size(max = 20) @Nullable List<UUID> productIds,
+            @RequestParam(required = false) @Size(max = 20) List<UUID> productIds,
             @ParameterObject @PageableDefault(size = 20, sort = "productId") Pageable pageable) {
         Page<InventoryItemResponse> page = inventoryItemService.findAll(productIds, pageable);
         return new PagedModel<>(page);
