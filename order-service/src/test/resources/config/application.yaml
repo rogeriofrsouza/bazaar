@@ -34,6 +34,8 @@ bazaar:
   gateway-url: http://localhost:8080
   outbox:
     relay-delay: 1h
+    retention: 7d
+    cleanup-delay: 1h
   orders:
     reservation-ttl: 1h
     expiry-check-delay: 1h

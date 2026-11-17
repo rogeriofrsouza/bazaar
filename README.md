@@ -191,7 +191,7 @@ Services exchange messages through RabbitMQ in a choreographed saga for checkout
 | `bazaar.inventory` | `stock.reserved`  | Order id                           | `order-service.stock-reserved`      |
 | `bazaar.inventory` | `stock.rejected`  | Order id and reason                | `order-service.stock-rejected`      |
 
-A service never publishes directly from its business code. It writes the message to an `outbox_message` table in its own database, in the same transaction as the change it describes, and a scheduled relay publishes pending rows every second (`bazaar.outbox.relay-delay`) and marks the confirmed ones sent. A message is never lost when the broker is down, but it can be delivered more than once, so consumers ignore messages they have already handled.
+A service never publishes directly from its business code. It writes the message to an `outbox_message` table in its own database, in the same transaction as the change it describes, and a scheduled relay publishes pending rows every second (`bazaar.outbox.relay-delay`) and marks the confirmed ones sent. A scheduled cleanup purges sent messages after `bazaar.outbox.retention` (7 days) in batches; the configured cleanup delay is 1 day. A message is never lost when the broker is down, but it can be delivered more than once, so consumers ignore messages they have already handled.
 
 When `catalog-service` creates a product, it records a `product.created` message in its outbox. `inventory-service` consumes it and creates the product's inventory item with zero stock; operators can then restock it through the inventory API. Duplicate deliveries do not create duplicate inventory items.
 

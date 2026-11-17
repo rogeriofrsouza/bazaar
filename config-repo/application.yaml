@@ -36,3 +36,6 @@ eureka:
 
 bazaar:
   gateway-url: ${GATEWAY_URL:http://localhost:8080}
+  outbox:
+    retention: 7d
+    cleanup-delay: 1d
