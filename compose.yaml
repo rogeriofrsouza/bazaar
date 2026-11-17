@@ -2,4 +2,4 @@ name: bazaar
 
 include:
   - docker/infra.yml
-  - docker/apps.yml
+  - docker/platform.yml

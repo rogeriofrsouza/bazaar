@@ -28,7 +28,7 @@ An e-commerce platform built as Spring Boot microservices. Each service owns its
 ```
 bazaar/
 ├── pom.xml              # Parent POM (modules, Spring Cloud BOM, shared OCI image config)
-├── compose.yaml         # Compose entry point, includes docker/infra.yml and docker/apps.yml
+├── compose.yaml         # Compose entry point for infrastructure and platform
 ├── config-server/       # Spring Cloud Config server
 ├── discovery-server/    # Eureka discovery server
 ├── api-gateway/         # API gateway (Spring Cloud Gateway)
@@ -39,6 +39,7 @@ bazaar/
 └── docker/
     ├── .env             # Variables used by the compose files
     ├── infra.yml        # Infrastructure (databases, RabbitMQ, Keycloak, ...)
+    ├── platform.yml     # Config server, discovery server and API gateway
     ├── apps.yml         # Microservice containers
     └── keycloak/        # Realm imported by Keycloak on startup
 ```
@@ -88,14 +89,21 @@ Use this to run the whole system as it would run when deployed.
    ./mvnw spring-boot:build-image -DskipTests
    ```
    Run from the root, the goal builds one image per module and skips the parent POM. Each image is tagged `rogeriofrsouza/bazaar-<service>:<version>` and `:latest`. To rebuild a single one, add `-pl <module>` (e.g. `./mvnw -pl order-service spring-boot:build-image -DskipTests`).
-2. Start infrastructure and apps:
+2. Start infrastructure, platform and apps:
    ```sh
-   docker compose up -d
+   docker compose --env-file docker/.env -f compose.yaml -f docker/apps.yml up -d
    ```
 
-`compose.yaml` at the repository root includes `docker/infra.yml` and `docker/apps.yml`, so Compose finds it without `-f`. Each included file keeps its own directory for relative paths and reads `docker/.env`.
+`compose.yaml` at the repository root includes only `docker/infra.yml` and `docker/platform.yml`. Running `docker compose up -d` starts infrastructure and platform services without the business services. Each included file keeps its own directory for relative paths and reads `docker/.env`. The full-stack command above explicitly adds `docker/apps.yml` and loads its variables with `--env-file`.
 
-Rebuild the image after code changes; Compose does not build it for you. Then recreate its container with `docker compose up -d <service>`.
+To run only the platform services (`config-server`, `discovery-server` and `api-gateway`):
+```sh
+docker compose -f docker/platform.yml up -d
+```
+
+All files use the same `bazaar` project and default network. The business services in `apps.yml` still depend on infrastructure and platform services, so combine it with the root `compose.yaml` as shown above.
+
+Rebuild the image after code changes; Compose does not build it for you. Then recreate its container with `docker compose --env-file docker/.env -f compose.yaml -f docker/apps.yml up -d <service>`.
 
 ### Stopping
 
@@ -103,6 +111,8 @@ Rebuild the image after code changes; Compose does not build it for you. Then re
 docker compose down      # keep data
 docker compose down -v   # also remove volumes
 ```
+
+If you started the full stack, use `docker compose --env-file docker/.env -f compose.yaml -f docker/apps.yml down` instead (add `-v` to also remove volumes).
 
 ## Development with DevTools in IntelliJ
 
@@ -131,13 +141,13 @@ The `<service>.yaml` files in `config-repo/` read connection settings from envir
 
 `RABBITMQ_HOST` (default `localhost`), `RABBITMQ_PORT` (default `5672`), `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` (default `bazaar` / `bazaar`) point the services that exchange messages at RabbitMQ (see [RabbitMQ](#rabbitmq)).
 
-In Docker, `docker/apps.yml` sets them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
+In Docker, `docker/apps.yml` and `docker/platform.yml` set them from `docker/.env`. In stage or production, set them to point at managed databases instead of containers.
 
 All servers run on virtual threads (`spring.threads.virtual.enabled`): the shared `application.yaml` in `config-repo/` enables them for the gateway and the services, and `config-server` and `discovery-server` set them in their own `application.yaml`.
 
 ### Config server
 
-`config-server` runs Spring Cloud Config with the `native` (filesystem) backend. It serves the files in `CONFIG_SEARCH_LOCATIONS` (default `file:./config-repo/,file:../config-repo/`, relative to the working directory, so it finds the folder both from the repository root, where IntelliJ runs it, and from the `config-server` module directory, where Maven runs it): `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The files are read on every request, so edits take effect without a restart (services pick them up on their next startup or refresh). In Docker, `apps.yml` mounts `config-repo/` read-only at `/config-repo` and sets `CONFIG_SEARCH_LOCATIONS` from `docker/.env`.
+`config-server` runs Spring Cloud Config with the `native` (filesystem) backend. It serves the files in `CONFIG_SEARCH_LOCATIONS` (default `file:./config-repo/,file:../config-repo/`, relative to the working directory, so it finds the folder both from the repository root, where IntelliJ runs it, and from the `config-server` module directory, where Maven runs it): `application.yaml` for settings shared by every service, and `<spring.application.name>.yaml` for one service. The files are read on every request, so edits take effect without a restart (services pick them up on their next startup or refresh). In Docker, `platform.yml` mounts `config-repo/` read-only at `/config-repo` and sets `CONFIG_SEARCH_LOCATIONS` from `docker/.env`.
 
 ### Discovery server
 
