@@ -11,12 +11,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -33,13 +35,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CatalogClient catalogClient;
     private final Outbox outbox;
+    private final TransactionOperations transactionOperations;
     private final Duration reservationTtl;
 
     OrderService(OrderRepository orderRepository, CatalogClient catalogClient, Outbox outbox,
+                 TransactionOperations transactionOperations,
                  @Value("${bazaar.orders.reservation-ttl}") Duration reservationTtl) {
         this.orderRepository = orderRepository;
         this.catalogClient = catalogClient;
         this.outbox = outbox;
+        this.transactionOperations = transactionOperations;
         this.reservationTtl = reservationTtl;
     }
 
@@ -56,7 +61,7 @@ public class OrderService {
                 .map(OrderResponse::from);
     }
 
-    @Transactional
+    // Calls catalog before opening the transaction, so no database connection is held during the HTTP call.
     public OrderResponse place(String customerSubject, CreateOrderRequest request) {
         Set<UUID> productIds = request.items()
                 .stream()
@@ -84,9 +89,11 @@ public class OrderService {
                 })
                 .toList();
 
-        Order order = orderRepository.save(Order.place(customerSubject, items));
-        outbox.add(OrdersExchange.PLACED, OrderPlacedMessage.from(order));
-        return OrderResponse.from(order);
+        return Objects.requireNonNull(transactionOperations.execute(_ -> {
+            Order order = orderRepository.save(Order.place(customerSubject, items));
+            outbox.add(OrdersExchange.PLACED, OrderPlacedMessage.from(order));
+            return OrderResponse.from(order);
+        }));
     }
 
     @Transactional

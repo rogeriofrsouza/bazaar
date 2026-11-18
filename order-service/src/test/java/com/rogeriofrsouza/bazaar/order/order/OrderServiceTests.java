@@ -19,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -28,6 +29,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -120,6 +122,43 @@ class OrderServiceTests {
                 });
 
         assertThat(orderService.findAll(owner, PageRequest.of(0, 20))).isEmpty();
+    }
+
+    @Test
+    void callsCatalogOutsideTheTransaction() {
+        UUID productId = UUID.randomUUID();
+        AtomicBoolean transactionActive = new AtomicBoolean(true);
+        given(catalogClient.getProducts(anyCollection())).willAnswer(invocation -> {
+            transactionActive.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return List.of(new CatalogProduct(productId, "Keyboard", new BigDecimal("150.00")));
+        });
+
+        OrderResponse placed = orderService.place("subject-1", new CreateOrderRequest(List.of(
+                new OrderItemRequest(productId, 1)
+        )));
+
+        assertThat(transactionActive).isFalse();
+        assertThat(orderService.findById(placed.id(), "subject-1").status()).isEqualTo(OrderStatus.PENDING);
+        assertThat(outboxRoutingKeys(placed.id())).containsExactly(OrdersExchange.PLACED);
+    }
+
+    @Test
+    void savesNothingWhenCatalogIsUnavailable() {
+        UUID productId = UUID.randomUUID();
+        given(catalogClient.getProducts(anyCollection())).willThrow(
+                new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Catalog service is unavailable"));
+        String owner = "subject-" + UUID.randomUUID();
+        Integer outboxRows = jdbcTemplate.queryForObject("SELECT count(*) FROM outbox_message", Integer.class);
+
+        assertThatThrownBy(() -> orderService.place(owner, new CreateOrderRequest(List.of(
+                new OrderItemRequest(productId, 1)
+        ))))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+
+        assertThat(orderService.findAll(owner, PageRequest.of(0, 20))).isEmpty();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM outbox_message", Integer.class))
+                .isEqualTo(outboxRows);
     }
 
     @Test
