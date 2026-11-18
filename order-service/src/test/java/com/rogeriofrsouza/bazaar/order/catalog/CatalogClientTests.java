@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class CatalogClientTests {
@@ -65,6 +67,42 @@ class CatalogClientTests {
         UUID id = UUID.randomUUID();
         server.expect(requestTo("http://catalog-service/api/products?ids=" + id + "&size=1"))
                 .andRespond(withSuccess());
+
+        assertThatThrownBy(() -> catalogClient.getProducts(List.of(id)))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    @Test
+    void mapsIoFailureToServiceUnavailable() {
+        UUID id = UUID.randomUUID();
+        server.expect(requestTo("http://catalog-service/api/products?ids=" + id + "&size=1"))
+                .andRespond(request -> {
+                    throw new SocketTimeoutException("Read timed out");
+                });
+
+        assertThatThrownBy(() -> catalogClient.getProducts(List.of(id)))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void mapsMissingInstanceToServiceUnavailable() throws Exception {
+        DeferringLoadBalancerInterceptor interceptor = mock(DeferringLoadBalancerInterceptor.class);
+        given(interceptor.intercept(any(), any(), any()))
+                .willThrow(new IllegalStateException("No instances available for catalog-service"));
+        CatalogClient client = new CatalogClient(RestClient.builder(), interceptor);
+
+        assertThatThrownBy(() -> client.getProducts(List.of(UUID.randomUUID())))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void mapsCatalogServerErrorToBadGateway() {
+        UUID id = UUID.randomUUID();
+        server.expect(requestTo("http://catalog-service/api/products?ids=" + id + "&size=1"))
+                .andRespond(withServerError());
 
         assertThatThrownBy(() -> catalogClient.getProducts(List.of(id)))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
